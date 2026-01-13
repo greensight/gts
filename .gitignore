@@ -5,3 +5,4 @@
 .vscode
 gts.config.ts
 /mocks
+.DS_Store

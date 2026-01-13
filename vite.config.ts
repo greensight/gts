@@ -11,8 +11,8 @@ export default defineConfig({
     build: {
         lib: {
             entry: './src/index.ts',
-            fileName: format => `index.${format}.js`,
-            formats: ['es'],
+            fileName: format => `index.${format === 'es' ? 'mjs' : 'cjs'}`,
+            formats: ['es', 'cjs'],
         },
         rollupOptions: {
             plugins: [
@@ -31,11 +31,20 @@ export default defineConfig({
                 'node:fs/promises',
                 'node:readline',
             ],
-            output: {
-                entryFileNames: '[name].js',
-                chunkFileNames: 'chunks/[name]-[hash].js',
-                assetFileNames: 'assets/[name].[ext]',
-            },
+            output: [
+                {
+                    format: 'es',
+                    entryFileNames: '[name].mjs',
+                    chunkFileNames: 'chunks/[name]-[hash].mjs',
+                    assetFileNames: 'assets/[name].[ext]',
+                },
+                {
+                    format: 'cjs',
+                    entryFileNames: '[name].cjs',
+                    chunkFileNames: 'chunks/[name]-[hash].cjs',
+                    assetFileNames: 'assets/[name].[ext]',
+                },
+            ],
         },
     },
     plugins: [

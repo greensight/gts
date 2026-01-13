@@ -13,7 +13,6 @@ export const createDistPackageJson = () => {
         description: packageJson.description,
         keywords: packageJson.keywords,
         private: packageJson.private,
-        type: packageJson.type,
         engines: packageJson.engines,
         repository: packageJson.repository,
         bugs: packageJson.bugs,
@@ -21,8 +20,15 @@ export const createDistPackageJson = () => {
         license: packageJson.license,
         peerDependencies: packageJson.dependencies,
         types: './index.d.ts',
-        module: './index.js',
-        main: './index.js',
+        main: './index.cjs',
+        module: './index.mjs',
+        exports: {
+            '.': {
+                types: './index.d.ts',
+                import: './index.mjs',
+                require: './index.cjs',
+            },
+        },
         bin: {
             'gts-init': './bin/init.js',
             'gts-generate': './bin/generate.js',

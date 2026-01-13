@@ -1,4 +1,4 @@
-# @greensight/gts
+# Greensight Token System
 
 Generate design tokens from Figma.
 
