@@ -1,0 +1,10 @@
+{
+  "padding": {
+    "$type": "dimension",
+    "$value": "40px"
+  },
+  "gap": {
+    "$type": "dimension",
+    "$value": "16px"
+  }
+}

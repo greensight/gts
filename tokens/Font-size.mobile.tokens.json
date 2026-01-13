@@ -1,0 +1,46 @@
+{
+  "h1": {
+    "$type": "dimension",
+    "$value": "30px"
+  },
+  "h2": {
+    "$type": "dimension",
+    "$value": "28px"
+  },
+  "h3": {
+    "$type": "dimension",
+    "$value": "24px"
+  },
+  "h4": {
+    "$type": "dimension",
+    "$value": "20px"
+  },
+  "XL": {
+    "$type": "dimension",
+    "$value": "18px"
+  },
+  "L": {
+    "$type": "dimension",
+    "$value": "17px"
+  },
+  "M": {
+    "$type": "dimension",
+    "$value": "16px"
+  },
+  "S": {
+    "$type": "dimension",
+    "$value": "13px"
+  },
+  "caption": {
+    "$type": "dimension",
+    "$value": "10px"
+  },
+  "micro": {
+    "$type": "dimension",
+    "$value": "10px"
+  },
+  "card_product_name": {
+    "$type": "dimension",
+    "$value": "13px"
+  }
+}

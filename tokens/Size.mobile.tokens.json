@@ -1,0 +1,90 @@
+{
+  "radius_XS": {
+    "$type": "dimension",
+    "$value": "4px"
+  },
+  "radius_S": {
+    "$type": "dimension",
+    "$value": "8px"
+  },
+  "radius_M": {
+    "$type": "dimension",
+    "$value": "16px"
+  },
+  "radius_L": {
+    "$type": "dimension",
+    "$value": "24px"
+  },
+  "radius_XL": {
+    "$type": "dimension",
+    "$value": "32px"
+  },
+  "radius_XXL": {
+    "$type": "dimension",
+    "$value": "36px"
+  },
+  "size_XXS": {
+    "$type": "dimension",
+    "$value": "4px"
+  },
+  "size_XS": {
+    "$type": "dimension",
+    "$value": "8px"
+  },
+  "size_S": {
+    "$type": "dimension",
+    "$value": "10px"
+  },
+  "size_M": {
+    "$type": "dimension",
+    "$value": "12px"
+  },
+  "size_L": {
+    "$type": "dimension",
+    "$value": "20px"
+  },
+  "size_XL": {
+    "$type": "dimension",
+    "$value": "24px"
+  },
+  "size_XXL": {
+    "$type": "dimension",
+    "$value": "32px"
+  },
+  "size_XXXL": {
+    "$type": "dimension",
+    "$value": "48px"
+  },
+  "height_S": {
+    "$type": "dimension",
+    "$value": "32px"
+  },
+  "height_M": {
+    "$type": "dimension",
+    "$value": "40px"
+  },
+  "height_L": {
+    "$type": "dimension",
+    "$value": "48px"
+  },
+  "min-width_card": {
+    "$type": "dimension",
+    "$value": "144px"
+  },
+  "max-width_card": {
+    "$type": "dimension",
+    "$value": "154px"
+  },
+  "gap": {
+    "$type": "dimension",
+    "$value": "8px"
+  },
+  "min-width_cardS": {
+    "$type": "dimension",
+    "$value": "154px"
+  },
+  "max-width_cardS": {
+    "$type": "dimension",
+    "$value": "220px"
+  }
+}
