@@ -1,8 +1,6 @@
-import { existsSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { tsImport } from 'ts-import';
 
+import { FileStorage } from '../FileStorage';
 import type { IModule } from '../../modules/types';
 
 export interface IGtsConfig {
@@ -12,20 +10,19 @@ export interface IGtsConfig {
 }
 
 export class Config {
-    static async create() {
-        const path = './gts.config.ts';
+    private static readonly configFileName = 'gts.config.ts';
 
-        if (existsSync(path)) {
+    static async create() {
+        if (FileStorage.exists(Config.configFileName)) {
             throw new Error('The file already exists');
         }
 
-        await writeFile(path, '');
+        await FileStorage.write(Config.configFileName, '', { overwrite: false });
     }
 
     public async load(): Promise<IGtsConfig | undefined> {
-        const path = resolve(process.cwd(), './gts.config.ts');
         try {
-            const exportedContent = await tsImport.compile(path);
+            const exportedContent = await tsImport.compile(Config.configFileName);
 
             if (!exportedContent) throw new Error();
             return exportedContent.default;
