@@ -51,7 +51,9 @@ export default defineConfig({
         dts(),
         viteStaticCopy({
             targets: [
-                { src: resolve(__dirname, 'bin/*'), dest: resolve(__dirname, 'dist/bin') },
+                { src: resolve(__dirname, 'bin/*.js'), dest: resolve(__dirname, 'dist/bin') },
+                { src: resolve(__dirname, 'bin/*.cjs'), dest: resolve(__dirname, 'dist/bin') },
+                { src: resolve(__dirname, 'bin/*.mjs'), dest: resolve(__dirname, 'dist/bin') },
                 { src: resolve(__dirname, 'README.md'), dest: resolve(__dirname, 'dist') },
                 { src: resolve(__dirname, 'LICENSE.md'), dest: resolve(__dirname, 'dist') },
             ],
