@@ -6,3 +6,5 @@
 gts.config.ts
 /mocks
 .DS_Store
+.cursor
+output

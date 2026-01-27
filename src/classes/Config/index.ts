@@ -5,8 +5,9 @@ import type { IModule } from '../../modules/types';
 import { FileStorage } from '../FileStorage';
 
 export interface IGtsConfig {
-    figmaToken: string;
-    fileId: string;
+    figmaToken?: string;
+    fileId?: string;
+    manifest?: string;
     modules: IModule[];
 }
 

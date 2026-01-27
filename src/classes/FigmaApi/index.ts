@@ -4,9 +4,9 @@ import type { IConfig, OnTimeMeasureHandlerType } from './types';
 import { chunkIds, preparedParams } from './utils';
 
 export class FigmaAPI {
-    figmaToken: string;
-    fileId: string;
-    constructor(figmaToken: string, fileId: string) {
+    figmaToken: string | undefined;
+    fileId: string | undefined;
+    constructor(figmaToken?: string, fileId?: string) {
         this.figmaToken = figmaToken;
         this.fileId = fileId;
     }
@@ -33,6 +33,10 @@ export class FigmaAPI {
         endpoint: string,
         { params = {}, timeout = 30000, abortController = new AbortController() }: IConfig = {}
     ) {
+        if (!this.figmaToken || !this.fileId) {
+            throw new Error('Добавьте figmaToken и figmaId');
+        }
+
         const parsedParams = Object.entries(params).reduce((acc, [key, value]) => {
             if (typeof value !== 'undefined') return { ...acc, [key]: value };
             return acc;
