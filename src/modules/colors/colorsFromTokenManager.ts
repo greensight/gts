@@ -1,4 +1,5 @@
-import type { IDSTokens, TDSTokenValueWithModes } from '../../classes/TokenManager/types';
+import type { TokenManager } from '../../classes/TokenManager';
+import type { IDSTokenVariable, IDSTokens, TDSTokenValueWithModes } from '../../classes/TokenManager/types';
 import type { IColorToken, TColorTokenValue } from '../colors/types';
 import { generateColorFiles } from '../colors/utils';
 import type { IModule } from '../types';
@@ -43,6 +44,62 @@ const flattenTokens = (tokenStructures: IDSTokens, name: string): Record<string,
 
 const nameParser = (name: string) => `cl-${name}`;
 
+const resolveColorTokenValue = (
+    token: IDSTokenVariable,
+    tokenManagerClient: TokenManager,
+    mode?: string
+): IDSTokenVariable | undefined => {
+    const { type, value } = token;
+
+    if (type !== 'color') return;
+
+    if (typeof value === 'string') {
+        if (!tokenManagerClient.isVariableReference(value)) return { ...token, value };
+        const resolvedValue = tokenManagerClient.getToken(tokenManagerClient.getVariablePath(value));
+
+        const finnalyToken = resolvedValue
+            ? resolveColorTokenValue(resolvedValue, tokenManagerClient, mode)
+            : undefined;
+
+        return finnalyToken?.value ? { ...token, ...resolvedValue } : undefined;
+    }
+
+    const modes = Object.keys(value);
+
+    const parsedValueWithModes = modes.reduce<TDSTokenValueWithModes>((acc, modeKey) => {
+        if (mode && modeKey !== mode) return acc;
+
+        const v = (value as Record<string, string>)[modeKey];
+        if (typeof v !== 'string') return acc;
+        if (!tokenManagerClient.isVariableReference(v)) return { ...acc, [modeKey]: v };
+
+        const resolvedValue = tokenManagerClient.getToken(tokenManagerClient.getVariablePath(v));
+
+        const finnalyToken = resolvedValue
+            ? resolveColorTokenValue(resolvedValue, tokenManagerClient, modeKey)
+            : undefined;
+
+        return finnalyToken?.value ? { ...acc, ...(finnalyToken.value as TDSTokenValueWithModes) } : acc;
+    }, {});
+
+    if (!Object.keys(parsedValueWithModes).length) return;
+    return { ...token, value: parsedValueWithModes };
+};
+
+const resolveColorTokens = (tokens: IDSTokens, tokenManagerClient: TokenManager): IDSTokens => {
+    return Object.keys(tokens).reduce<IDSTokens>((acc, key) => {
+        const token = tokens[key];
+
+        if (token.type && token.value) {
+            const resolvedColorTokenValue = resolveColorTokenValue(token as IDSTokenVariable, tokenManagerClient);
+            return resolvedColorTokenValue ? { ...acc, [key]: resolvedColorTokenValue } : acc;
+        }
+        const resolvedColorTokens = resolveColorTokens(token as IDSTokens, tokenManagerClient);
+
+        return resolvedColorTokens ? { ...acc, [key]: resolvedColorTokens } : acc;
+    }, {});
+};
+
 export const colorsFromTokenManager = ({
     input = {},
     output: { jsonDir, stylesDir, jsonFileName = 'colors.json', cssFileName = 'colors.css' },
@@ -74,7 +131,6 @@ export const colorsFromTokenManager = ({
                 console.log(`[colors/tokenManager] Processing styles for colors...`);
                 if (styles.color) tokens.push(styles.color);
             }
-            console.log('tokens', includeStyles, tokens, tokenManagerClient.getStyles());
             // Generate colors from variables if specified
             if (includeVariables?.length) {
                 console.log(`[colors/tokenManager] Processing ${includeVariables.length} variable groups...`);
@@ -83,12 +139,14 @@ export const colorsFromTokenManager = ({
                 tokens.push(...variableColors);
             }
 
-            const colorTokens = tokens.flatMap(item =>
-                Object.entries(flattenTokens(item, '')).reduce<IColorToken[]>(
-                    (arr, [name, value]) => [...arr, { name: nameParser(name), value }],
-                    []
-                )
-            );
+            const colorTokens = tokens
+                .map(token => resolveColorTokens(token, tokenManagerClient))
+                .flatMap(item =>
+                    Object.entries(flattenTokens(item, '')).reduce<IColorToken[]>(
+                        (arr, [name, value]) => [...arr, { name: nameParser(name), value }],
+                        []
+                    )
+                );
 
             if (colorTokens.length === 0) {
                 console.warn(`[colors/tokenManager] No color tokens generated`);

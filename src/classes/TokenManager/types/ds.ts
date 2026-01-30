@@ -5,7 +5,7 @@ export type TDSTokenValueWithModes = Record<string, TDSTokenValue<TFigmaTokenTyp
 
 export interface IDSTokenVariable {
     type: TFigmaTokenType;
-    value: TDSTokenValueWithModes;
+    value: TDSTokenValueWithModes | TDSTokenValue<TFigmaTokenType>;
     description?: string;
 }
 

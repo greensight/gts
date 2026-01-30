@@ -247,6 +247,25 @@ export class TokenManager {
     }
 
     /**
+     * Checks if a value is a variable reference path
+     * @param value - Value to check
+     * @returns true if value is a string wrapped in curly braces like {variable.path}
+     */
+    public isVariableReference(value: any): value is string {
+        if (typeof value !== 'string') return false;
+        return /^\{.+\}$/.test(value);
+    }
+
+    /**
+     * Extracts variable path from variable reference string after checking if it's a reference
+     * @param value - Value to extract path from
+     * @returns variable path if value is a valid reference, undefined otherwise
+     */
+    public getVariablePath(value: string): string {
+        return value.slice(1, -1);
+    }
+
+    /**
      * Gets a nested token value by path, similar to lodash.get
      * @param variablePath - Dot-separated string path or array of path segments
      */
@@ -260,10 +279,10 @@ export class TokenManager {
 
         if (result && typeof result === 'object') return result as IDSTokenVariable;
 
-        const tokenFromSubgroups = Object.entries(this.variables).find(([, v]) => get(v, variablePath));
-
-        if (!tokenFromSubgroups) return;
-
-        return tokenFromSubgroups[1] as IDSTokenVariable;
+        // Search in subgroups with single get operation per subgroup
+        for (const [, subgroup] of Object.entries(this.variables)) {
+            const token = get(subgroup, variablePath) as IDSTokenVariable;
+            if (token?.value) return token;
+        }
     }
 }

@@ -75,7 +75,7 @@ export const generate = async () => {
 
     const figmaApiClient = new FigmaAPI(figmaToken, fileId);
 
-    const tokenManagerClient = new TokenManager(path.join(process.cwd(), 'mocks/mock1'));
+    const tokenManagerClient = new TokenManager(path.join(process.cwd(), 'mocks/mock2'));
     await tokenManagerClient.load();
     // if (manifest && FileStorage.exists(manifest)) {
     //     const tokenManager = new TokenManager(manifest);
@@ -90,7 +90,7 @@ export const generate = async () => {
         [
             colorsFromTokenManager({
                 input: {
-                    includeVariables: ['colors'],
+                    // includeVariables: ['colors'],
                     // includeStyles: false,
                 },
                 output: {
