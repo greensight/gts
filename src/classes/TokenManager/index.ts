@@ -1,8 +1,16 @@
-import { merge } from 'lodash-es';
+import { get, merge } from 'lodash-es';
 import path from 'path';
 
 import { FileStorage } from '../FileStorage';
-import type { ICollections, IDSStyles, IDSTokens, IFigmaStyles, IManifest, ITokenFile } from './types';
+import type {
+    ICollections,
+    IDSStyles,
+    IDSTokenVariable,
+    IDSTokens,
+    IFigmaStyles,
+    IManifest,
+    ITokenFile,
+} from './types';
 
 interface ICollectionIntermediateData {
     fileName: string;
@@ -31,6 +39,11 @@ export class TokenManager {
         this.tokensDir = tokensDir || '';
         this.manifestPath = path.join(this.tokensDir, 'manifest.json');
     }
+
+    public isLoaded(): boolean {
+        return this.loaded && !!this.variables && !!this.styles;
+    }
+
     /** to camelCase */
     private normalizeKey(key: string): string {
         const str = key.trim();
@@ -231,5 +244,26 @@ export class TokenManager {
             throw new Error('Tokens not loaded. Call load() first.');
         }
         return this.styles;
+    }
+
+    /**
+     * Gets a nested token value by path, similar to lodash.get
+     * @param variablePath - Dot-separated string path or array of path segments
+     */
+    public getToken(variablePath: string | string[]): IDSTokenVariable | undefined {
+        if (!this.loaded || !this.variables) {
+            throw new Error('Tokens not loaded. Call load() first.');
+        }
+
+        // Use lodash.get to get the value by path
+        const result = get(this.variables, variablePath);
+
+        if (result && typeof result === 'object') return result as IDSTokenVariable;
+
+        const tokenFromSubgroups = Object.entries(this.variables).find(([, v]) => get(v, variablePath));
+
+        if (!tokenFromSubgroups) return;
+
+        return tokenFromSubgroups[1] as IDSTokenVariable;
     }
 }
