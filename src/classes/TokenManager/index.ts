@@ -58,7 +58,7 @@ export class TokenManager {
                 const firstChar = word.charAt(0);
                 const restOfWord = word.slice(1);
 
-                return index === 0 ? word.toLowerCase() : firstChar.toUpperCase() + restOfWord;
+                return index === 0 ? word : firstChar.toUpperCase() + restOfWord;
             })
             .join('');
     }
