@@ -5,7 +5,8 @@ import { Config } from '../../classes/Config';
 import { FigmaAPI } from '../../classes/FigmaApi';
 import { FileStorage } from '../../classes/FileStorage';
 import { TokenManager } from '../../classes/TokenManager';
-import type { IFigmaTokenVariables, ResolvedTokenFile } from '../../classes/TokenManager/types';
+// import type { IFigmaTokenVariables, ResolvedTokenFile } from '../../classes/TokenManager/types';
+import { colorsFromTokenManager } from '../../modules';
 
 // Function to read manifests from mocks and write them to JSON files
 const processMockManifests = async () => {
@@ -36,6 +37,10 @@ const processMockManifests = async () => {
 
                 const tokenManager = new TokenManager(mockPath);
                 await tokenManager.load();
+                console.log(
+                    "tokenManager.getVariableByPath('fontSize.body')"
+                    // tokenManager.getVariableByPath('fontSize.body')
+                );
 
                 const result = {
                     variables: tokenManager.getVariables(),
@@ -58,7 +63,7 @@ const processMockManifests = async () => {
 
 export const generate = async () => {
     // Process mock manifests and write to JSON files
-    await processMockManifests();
+    // await processMockManifests();
 
     const config = new Config();
     const configData = await config.load();
@@ -70,39 +75,29 @@ export const generate = async () => {
 
     const figmaApiClient = new FigmaAPI(figmaToken, fileId);
 
-    let tokens:
-        | {
-              variables: IFigmaTokenVariables;
-              styles: {
-                  text?: ResolvedTokenFile;
-                  effect?: ResolvedTokenFile;
-                  color?: ResolvedTokenFile;
-                  grid?: ResolvedTokenFile;
-              };
-          }
-        | undefined;
+    const tokenManagerClient = new TokenManager(path.join(process.cwd(), 'mocks/mock1'));
+    await tokenManagerClient.load();
+    // if (manifest && FileStorage.exists(manifest)) {
+    //     const tokenManager = new TokenManager(manifest);
+    //     await tokenManager.load();
+    //     tokens = {
+    //         variables: tokenManager.getVariables(),
+    //         styles: tokenManager.getStyles(),
+    //     };
+    // }
 
-    if (manifest && FileStorage.exists(manifest)) {
-        const tokenManager = new TokenManager(manifest);
-        await tokenManager.load();
-        tokens = {
-            variables: tokenManager.getVariables(),
-            styles: tokenManager.getStyles(),
-        };
-    }
-
-    // await Promise.all(
-    //     // [
-    //     //     colorsFromStyles({
-    //     //         input: { variablePaths: ['./dark.tokens.json', './light.tokens.json'] },
-    //     //         output: { jsonDir: './fromStyles', stylesDir: './fromStyles' },
-    //     //     }),
-    //     //     colorsFromVariables({
-    //     //         input: { variablePaths: ['./dark.tokens.json', './light.tokens.json'] },
-    //     //         output: { jsonDir: './fromVariables', stylesDir: './fromVariables' },
-    //     //     }),
-    //     // ]
-
-    //     modules.map(module => module.executor({ figmaApiClient }))
-    // );
+    await Promise.all(
+        [
+            colorsFromTokenManager({
+                input: {
+                    includeVariables: ['colors'],
+                    // includeStyles: false,
+                },
+                output: {
+                    jsonDir: './fromVariables',
+                    stylesDir: './fromVariables',
+                },
+            }),
+        ].map(module => module.executor({ figmaApiClient, tokenManagerClient }))
+    );
 };

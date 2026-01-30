@@ -1,4 +1,5 @@
 import type { FigmaAPI } from '../classes/FigmaApi';
+import type { TokenManager } from '../classes/TokenManager';
 
 // import type { TokenVariables, ResolvedTokenFile } from '../classes/TokenManager';
 
@@ -6,17 +7,9 @@ export interface IModule {
     name: string;
     executor: ({
         figmaApiClient,
-        // tokens,
+        tokenManagerClient,
     }: {
         figmaApiClient: FigmaAPI;
-        // tokens?: {
-        //     variables: TokenVariables;
-        //     styles: {
-        //         text?: ResolvedTokenFile;
-        //         effect?: ResolvedTokenFile;
-        //         color?: ResolvedTokenFile;
-        //         grid?: ResolvedTokenFile;
-        //     };
-        // };
+        tokenManagerClient: TokenManager;
     }) => Promise<void>;
 }
