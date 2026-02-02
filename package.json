@@ -1,7 +1,7 @@
 {
     "name": "@greensight/gts",
     "license": "MIT",
-    "version": "1.0.0-alpha.11",
+    "version": "1.0.0-alpha.13",
     "description": "Generate design tokens from Figma",
     "type": "module",
     "private": false,
@@ -41,7 +41,6 @@
         "LICENSE.md"
     ],
     "dependencies": {
-        "lodash-es": "^4.17.23",
         "rimraf": "^6.0.1",
         "ts-import": "2.0.40"
     },
@@ -49,7 +48,6 @@
         "@figma/rest-api-spec": "^0.34.0",
         "@rollup/plugin-commonjs": "^28.0.3",
         "@trivago/prettier-plugin-sort-imports": "^4.3.0",
-        "@types/lodash-es": "^4.17.12",
         "@types/node": "^18.19.130",
         "@types/rimraf": "^4.0.5",
         "@typescript-eslint/eslint-plugin": "^5.62.0",

@@ -1,6 +1,6 @@
-import { get, merge } from 'lodash-es';
 import path from 'path';
 
+import { get, merge } from '../../common/lodash';
 import { FileStorage } from '../FileStorage';
 import type {
     ICollections,
@@ -28,7 +28,7 @@ export class TokenManager {
     private tokensDir: string;
     private manifestPath: string;
 
-    // figma data
+    // result data
     private variables?: IDSTokens;
     private styles?: IDSStyles;
 
@@ -58,7 +58,7 @@ export class TokenManager {
                 const firstChar = word.charAt(0);
                 const restOfWord = word.slice(1);
 
-                return index === 0 ? word : firstChar.toUpperCase() + restOfWord;
+                return index === 0 ? word.toLowerCase() : firstChar.toUpperCase() + restOfWord;
             })
             .join('');
     }
@@ -100,7 +100,7 @@ export class TokenManager {
         if (!value) return value;
         if (typeof value === 'string') return this.parseVariableString(value);
         if (typeof value !== 'object') return value;
-        if (Array.isArray(value)) value.map(v => this.parseValue(v));
+        if (Array.isArray(value)) return value.map(v => this.parseValue(v));
         return Object.entries(value).reduce((acc, [k, v]) => ({ ...acc, [k]: this.parseValue(v) }), {});
     }
 

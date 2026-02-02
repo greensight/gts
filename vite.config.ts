@@ -22,7 +22,6 @@ export default defineConfig({
                 commonjsPlugin(),
             ],
             external: [
-                'lodash-es',
                 'ts-import',
                 'path',
                 'fs',
