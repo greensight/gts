@@ -1,8 +1,14 @@
-import type { TokenManager } from '../../classes/TokenManager';
-import type { IDSTokenVariable, IDSTokens, TDSTokenValueWithModes } from '../../classes/TokenManager/types';
-import type { IColorToken, TColorTokenValue } from '../colors/types';
-import { generateColorFiles } from '../colors/utils';
-import type { IModule } from '../types';
+import type { TokenManager } from '../../../classes/TokenManager';
+import type {
+    IBaseToken,
+    IDSTokenStyleColor,
+    TDSTokenValue,
+    TDSTokenVariableValueWithModes,
+} from '../../../classes/TokenManager/types';
+import type { IColorToken, TColorTokenValue } from '../../colors/types';
+import { generateColorFiles } from '../../colors/utils';
+import type { IModule } from '../../types';
+import { variableToColorToken } from './utils';
 
 export interface IColorsFromTokenManagerInput {
     includeVariables?: string[];
@@ -21,10 +27,18 @@ export interface IColorsFromTokenManagerParams {
     output: IColorsFromTokenManagerOutput;
 }
 
+interface ITokenStructureVariable extends IBaseToken<
+    TDSTokenVariableValueWithModes | TDSTokenValue<'color'>,
+    'color'
+> {}
+interface ITokenStructures {
+    [key: string]: ITokenStructureVariable | ITokenStructures;
+}
+
 /**
  * Flattens nested token structures into a flat array of IColorToken
  */
-const flattenTokens = (tokenStructures: IDSTokens, name: string): Record<string, TColorTokenValue> =>
+const flattenTokens = (tokenStructures: ITokenStructures, name: string): Record<string, TColorTokenValue> =>
     Object.keys(tokenStructures).reduce<Record<string, TColorTokenValue>>(
         (acc, key) => {
             const token = tokenStructures[key];
@@ -32,8 +46,12 @@ const flattenTokens = (tokenStructures: IDSTokens, name: string): Record<string,
             const concatName = name ? `${name}-${key}` : key;
             if (token && typeof token === 'object' && 'type' in token && 'value' in token) {
                 const modes = Object.keys(token.value);
-                const value = modes.length > 1 ? token.value : (token.value as TDSTokenValueWithModes)[modes[0]];
-                const variable = { [concatName]: value } as Record<string, TColorTokenValue>;
+                const value =
+                    modes.length > 1 ? token.value : (token.value as TDSTokenVariableValueWithModes)[modes[0]];
+                const variable = { [concatName]: variableToColorToken(value as IDSTokenStyleColor['value']) } as Record<
+                    string,
+                    TColorTokenValue
+                >;
                 return { ...acc, ...variable };
             }
             const flatTokens = flattenTokens(token, concatName);
@@ -44,57 +62,21 @@ const flattenTokens = (tokenStructures: IDSTokens, name: string): Record<string,
 
 const nameParser = (name: string) => `cl-${name}`;
 
-const resolveColorTokenValue = (
-    token: IDSTokenVariable,
-    tokenManagerClient: TokenManager,
-    mode?: string
-): IDSTokenVariable | undefined => {
-    const { type, value } = token;
-
-    if (type !== 'color') return;
-
-    if (typeof value === 'string') {
-        if (!tokenManagerClient.isVariableReference(value)) return { ...token, value };
-        const resolvedValue = tokenManagerClient.getToken(tokenManagerClient.getVariablePath(value));
-
-        const finnalyToken = resolvedValue
-            ? resolveColorTokenValue(resolvedValue, tokenManagerClient, mode)
-            : undefined;
-
-        return finnalyToken?.value ? { ...token, ...resolvedValue } : undefined;
-    }
-
-    const modes = Object.keys(value);
-
-    const parsedValueWithModes = modes.reduce<TDSTokenValueWithModes>((acc, modeKey) => {
-        if (mode && modeKey !== mode) return acc;
-
-        const v = (value as Record<string, string>)[modeKey];
-        if (typeof v !== 'string') return acc;
-        if (!tokenManagerClient.isVariableReference(v)) return { ...acc, [modeKey]: v };
-
-        const resolvedValue = tokenManagerClient.getToken(tokenManagerClient.getVariablePath(v));
-
-        const finnalyToken = resolvedValue
-            ? resolveColorTokenValue(resolvedValue, tokenManagerClient, modeKey)
-            : undefined;
-
-        return finnalyToken?.value ? { ...acc, ...(finnalyToken.value as TDSTokenValueWithModes) } : acc;
-    }, {});
-
-    if (!Object.keys(parsedValueWithModes).length) return;
-    return { ...token, value: parsedValueWithModes };
-};
-
-const resolveColorTokens = (tokens: IDSTokens, tokenManagerClient: TokenManager): IDSTokens => {
-    return Object.keys(tokens).reduce<IDSTokens>((acc, key) => {
+const resolveColorTokens = (tokens: ITokenStructures, tokenManagerClient: TokenManager): ITokenStructures => {
+    return Object.keys(tokens).reduce<ITokenStructures>((acc, key) => {
         const token = tokens[key];
 
         if (token.type && token.value) {
-            const resolvedColorTokenValue = resolveColorTokenValue(token as IDSTokenVariable, tokenManagerClient);
-            return resolvedColorTokenValue ? { ...acc, [key]: resolvedColorTokenValue } : acc;
+            const resolvedColorTokenValue =
+                typeof token.value === 'string'
+                    ? tokenManagerClient.resolveVariableValueString(token.value, key)
+                    : tokenManagerClient.resolveVariableValue(token.value as TDSTokenVariableValueWithModes);
+
+            return resolvedColorTokenValue
+                ? { ...acc, [key]: { ...(token as ITokenStructureVariable), value: resolvedColorTokenValue } }
+                : acc;
         }
-        const resolvedColorTokens = resolveColorTokens(token as IDSTokens, tokenManagerClient);
+        const resolvedColorTokens = resolveColorTokens(token as ITokenStructures, tokenManagerClient);
 
         return resolvedColorTokens ? { ...acc, [key]: resolvedColorTokens } : acc;
     }, {});
@@ -121,7 +103,7 @@ export const colorsFromTokenManager = ({
                 throw new Error('TokenManager is not loaded. Tokens must be loaded before using this module.');
             }
 
-            const tokens: IDSTokens[] = [];
+            const tokens: ITokenStructures[] = [];
 
             const variables = tokenManagerClient.getVariables();
 
@@ -134,7 +116,13 @@ export const colorsFromTokenManager = ({
             // Generate colors from variables if specified
             if (includeVariables?.length) {
                 console.log(`[colors/tokenManager] Processing ${includeVariables.length} variable groups...`);
-                const variableColors = includeVariables.map(key => variables[key]).filter(Boolean) as IDSTokens[];
+                const variableColors = includeVariables
+                    .map(key => {
+                        const variable = variables[key];
+                        if (variable.type !== 'color') return;
+                        return variable;
+                    })
+                    .filter(Boolean) as ITokenStructures[];
 
                 tokens.push(...variableColors);
             }

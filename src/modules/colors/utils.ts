@@ -1,6 +1,7 @@
 import type { ColorStop, GradientPaint, Paint, Vector } from '@figma/rest-api-spec';
 
 import { FileStorage } from '../../classes/FileStorage';
+import { IColorFigmaGradientValue, IColorFigmaToken, IDSTokenStyleColor } from '../../classes/TokenManager/types';
 import type { IColorToken } from './types';
 
 export const rgbToHex = ({ r, g, b }: { r: number; g: number; b: number }) => {

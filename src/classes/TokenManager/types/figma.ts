@@ -7,10 +7,19 @@ export interface IBaseFigmaToken {
     $description?: string;
 }
 
+export interface IColorFigmaGradientValue {
+    type: 'radial' | 'linear' | 'conic';
+    angle: number;
+    stops: {
+        color: string;
+        position: number;
+    }[];
+}
+
 // Specific FigmaToken value types
 export interface IColorFigmaToken extends IBaseFigmaToken {
     $type: 'color';
-    $value: string;
+    $value: string | IColorFigmaGradientValue;
 }
 
 export interface IDimensionFigmaToken extends IBaseFigmaToken {

@@ -1,4 +1,4 @@
-import type { IDSTokens, IShadowValue } from '../../classes/TokenManager/types';
+import type { IDSStyles, IShadowValue } from '../../classes/TokenManager/types';
 import type { IModule } from '../types';
 import type { IShadowToken, TShadowTokenValue } from './types';
 import { generateShadowFiles, getCSSVariableValue } from './utils';
@@ -23,7 +23,7 @@ export interface IShadowsFromTokenManagerParams {
 /**
  * Flattens nested token structures into a flat array of IShadowToken
  */
-const flattenTokens = (tokenStructures: IDSTokens, name: string): Record<string, TShadowTokenValue> =>
+const flattenTokens = (tokenStructures: IDSStyles['effect'], name: string): Record<string, TShadowTokenValue> =>
     Object.keys(tokenStructures).reduce<Record<string, TShadowTokenValue>>(
         (acc, key) => {
             const token = tokenStructures[key];
@@ -64,22 +64,13 @@ export const shadowsFromTokenManager = ({
                 throw new Error('TokenManager is not loaded. Tokens must be loaded before using this module.');
             }
 
-            const tokens: IDSTokens[] = [];
-
-            const variables = tokenManagerClient.getVariables();
+            const tokens: IDSStyles['effect'][] = [];
 
             // Generate shadows from styles if enabled
             if (includeStyles) {
                 const styles = tokenManagerClient.getStyles();
                 console.log(`[shadows/tokenManager] Processing styles for shadows...`);
                 if (styles.effect) tokens.push(styles.effect);
-            }
-            // Generate shadows from variables if specified
-            if (includeVariables?.length) {
-                console.log(`[shadows/tokenManager] Processing ${includeVariables.length} variable groups...`);
-                const variableShadows = includeVariables.map(key => variables[key]).filter(Boolean) as IDSTokens[];
-
-                tokens.push(...variableShadows);
             }
 
             const shadowTokens = tokens.flatMap(item =>

@@ -5,11 +5,13 @@ import { FileStorage } from '../FileStorage';
 import type {
     ICollections,
     IDSStyles,
+    IDSTokenFile,
     IDSTokenVariable,
-    IDSTokens,
+    IDSTokenVariableValue,
     IFigmaStyles,
     IManifest,
     ITokenFile,
+    TDSTokenVariableValueWithModes,
 } from './types';
 
 interface ICollectionIntermediateData {
@@ -23,14 +25,21 @@ interface IStyleIntermediateData {
     fileName: string;
 }
 
+const DEFAULT_STYLES = {
+    color: {},
+    effect: {},
+    text: {},
+    grid: {},
+};
+
 export class TokenManager {
     // files
     private tokensDir: string;
     private manifestPath: string;
 
     // result data
-    private variables?: IDSTokens;
-    private styles?: IDSStyles;
+    private variables?: IDSTokenFile['variables'];
+    private styles?: IDSTokenFile['styles'];
 
     // flags
     private loaded = false;
@@ -104,7 +113,7 @@ export class TokenManager {
         return Object.entries(value).reduce((acc, [k, v]) => ({ ...acc, [k]: this.parseValue(v) }), {});
     }
 
-    private getTokensFromFile(tokens: ITokenFile, mode: string): IDSTokens {
+    private getTokensFromFile(tokens: ITokenFile, mode: string): IDSTokenFile['variables'] {
         return Object.entries(tokens).reduce((acc, [tokenKey, tokenValue]) => {
             if ('$type' in tokenValue && '$value' in tokenValue) {
                 return {
@@ -122,7 +131,7 @@ export class TokenManager {
         }, {});
     }
 
-    private processTokensFile(tokens: ITokenFile, modeName: string, collectionName: string): IDSTokens {
+    private processTokensFile(tokens: ITokenFile, modeName: string, collectionName: string): IDSTokenFile['variables'] {
         const normalizedCollectionName = this.normalizeKey(collectionName);
 
         const variableFileValue = this.getTokensFromFile(tokens, modeName);
@@ -133,7 +142,9 @@ export class TokenManager {
     /**
      * Loads all variable files in parallel and returns processed results
      */
-    private async loadVariableFiles(variableFiles: ICollectionIntermediateData[]): Promise<Array<IDSTokens>> {
+    private async loadVariableFiles(
+        variableFiles: ICollectionIntermediateData[]
+    ): Promise<Array<IDSTokenFile['variables']>> {
         return Promise.all(
             variableFiles.map(async ({ fileName, modeName, collectionName }) => {
                 try {
@@ -142,20 +153,20 @@ export class TokenManager {
                     return this.processTokensFile(tokens, modeName, collectionName);
                 } catch (error) {
                     console.warn(`Failed to load variable file: ${path.join(this.tokensDir, fileName)}`, error);
-                    return {} as IDSTokens;
+                    return {} as IDSTokenFile['variables'];
                 }
             })
         );
     }
 
-    private mergeVariables(variables: IDSTokens[]): IDSTokens {
-        return variables.reduce<IDSTokens>((acc, variableObj) => merge(acc, variableObj), {});
+    private mergeVariables(variables: IDSTokenFile['variables'][]): IDSTokenFile['variables'] {
+        return variables.reduce<IDSTokenFile['variables']>((acc, variableObj) => merge(acc, variableObj), {});
     }
 
     /**
      * Loads and processes all token variables from manifest collections
      */
-    private async loadTokenVariables(collections: ICollections): Promise<IDSTokens> {
+    private async loadTokenVariables(collections: ICollections): Promise<IDSTokenFile['variables']> {
         try {
             const variableFileList = this.createVariableFileList(collections);
             const loadedVariables = await this.loadVariableFiles(variableFileList);
@@ -198,7 +209,9 @@ export class TokenManager {
         );
         return styles.reduce<IDSStyles>(
             (acc, style) => ({ ...acc, [style.styleType]: this.getTokensFromFile(style.styleTokens, '') }) as IDSStyles,
-            {}
+            {
+                ...DEFAULT_STYLES,
+            }
         );
     }
 
@@ -206,7 +219,7 @@ export class TokenManager {
      * Loads and processes all style tokens from manifest
      */
     private async loadStyles(styles?: IFigmaStyles): Promise<IDSStyles> {
-        if (!styles) return {};
+        if (!styles) return { ...DEFAULT_STYLES };
 
         const styleFileList = this.createStyleFileList(styles);
         const loadedStyles = await this.loadStyleFiles(styleFileList);
@@ -229,7 +242,7 @@ export class TokenManager {
     /**
      * Get all variables (flattened tokens from collections)
      */
-    public getVariables(): IDSTokens {
+    public getVariables(): IDSTokenFile['variables'] {
         if (!this.loaded || !this.variables) {
             throw new Error('Tokens not loaded. Call load() first.');
         }
@@ -239,7 +252,7 @@ export class TokenManager {
     /**
      * Get resolved styles
      */
-    public getStyles(): IDSStyles {
+    public getStyles(): IDSTokenFile['styles'] {
         if (!this.loaded || !this.styles) {
             throw new Error('Tokens not loaded. Call load() first.');
         }
@@ -266,23 +279,56 @@ export class TokenManager {
     }
 
     /**
+     * Resolves a variable reference by validating, parsing and getting the token
+     * @param value - Value to resolve (should be a variable reference like "{variable.path}")
+     * @param mode - Mode name to get value for (optional)
+     * @returns resolved token variable or undefined if not found or invalid
+     */
+    public resolveVariableValue(value: IDSTokenVariable['value']): IDSTokenVariable['value'] | undefined {
+        if (typeof value !== 'object') return;
+
+        return Object.keys(value).reduce<IDSTokenVariable['value']>((acc, key) => {
+            const v = value[key];
+            const resolvedVariableValue = this.resolveVariableValueString(v, key);
+            if (resolvedVariableValue) acc[key] = resolvedVariableValue;
+            return acc;
+        }, {});
+    }
+
+    /**
+     * Resolves a variable reference by validating, parsing and getting the token
+     * @param value - Value to resolve (should be a variable reference like "{variable.path}")
+     * @param mode - Mode name to get value for (optional)
+     * @returns resolved token variable or undefined if not found or invalid
+     */
+    public resolveVariableValueString(value: string, mode?: string): IDSTokenVariableValue | undefined {
+        if (!this.isVariableReference(value)) return value;
+
+        const variablePath = this.getVariablePath(value);
+        const findedValue = this.getToken(variablePath, mode);
+        if (!findedValue) return;
+        return this.resolveVariableValueString(findedValue, mode);
+    }
+
+    /**
      * Gets a nested token value by path, similar to lodash.get
      * @param variablePath - Dot-separated string path or array of path segments
+     * @param mode - Mode name to get value for (optional)
      */
-    public getToken(variablePath: string | string[]): IDSTokenVariable | undefined {
+    public getToken(variablePath: string, mode?: string): string | undefined {
         if (!this.loaded || !this.variables) {
             throw new Error('Tokens not loaded. Call load() first.');
         }
 
-        // Use lodash.get to get the value by path
-        const result = get(this.variables, variablePath);
-
-        if (result && typeof result === 'object') return result as IDSTokenVariable;
-
-        // Search in subgroups with single get operation per subgroup
-        for (const [, subgroup] of Object.entries(this.variables)) {
+        for (const subgroup of Object.values(this.variables)) {
             const token = get(subgroup, variablePath) as IDSTokenVariable;
-            if (token?.value) return token;
+            if (!token?.value) return;
+
+            if (typeof token.value === 'object') {
+                if (mode) return (token.value as TDSTokenVariableValueWithModes)[mode];
+                else return;
+            }
+            return;
         }
     }
 }

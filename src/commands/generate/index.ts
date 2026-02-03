@@ -77,7 +77,7 @@ export const generate = async () => {
 
     const figmaApiClient = new FigmaAPI(figmaToken, fileId);
 
-    const tokenManagerClient = new TokenManager(path.join(process.cwd(), 'mocks/mock2'));
+    const tokenManagerClient = new TokenManager(path.join(process.cwd(), 'mocks/mock4'));
     // const tokenManagerClient = new TokenManager(manifest);
     // if (manifest && FileStorage.exists(manifest)) {
     await tokenManagerClient.load();
