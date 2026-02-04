@@ -5,7 +5,13 @@ import { Config } from '../../classes/Config';
 import { FigmaAPI } from '../../classes/FigmaApi';
 import { FileStorage } from '../../classes/FileStorage';
 import { TokenManager } from '../../classes/TokenManager';
-import { colorsFromTokenManager, shadowsFromTokenManager } from '../../modules';
+import {
+    breakpointsFromTokenManager,
+    breakpointsListFromTokenManager,
+    colorsFromTokenManager,
+    containerFromTokenManager,
+    shadowsFromTokenManager,
+} from '../../modules';
 
 // import type { IFigmaTokenVariables, ResolvedTokenFile } from '../../classes/TokenManager/types';
 // import { colorsFromTokenManager } from '../../modules';
@@ -77,7 +83,7 @@ export const generate = async () => {
 
     const figmaApiClient = new FigmaAPI(figmaToken, fileId);
 
-    const tokenManagerClient = new TokenManager(path.join(process.cwd(), 'mocks/mock4'));
+    const tokenManagerClient = new TokenManager(path.join(process.cwd(), 'mocks/mock3'));
     // const tokenManagerClient = new TokenManager(manifest);
     // if (manifest && FileStorage.exists(manifest)) {
     await tokenManagerClient.load();
@@ -103,6 +109,35 @@ export const generate = async () => {
                 output: {
                     jsonDir: './fromVariables',
                     stylesDir: './fromVariables',
+                },
+            }),
+            breakpointsFromTokenManager({
+                input: {
+                    names: ['xxxl', 'xxl', 'xl', 'lg', 'md', 'sm', 'xs', 'xxs', 'xxxs'],
+                },
+                output: {
+                    jsonDir: './breakpoints',
+                    stylesDir: './breakpoints',
+                },
+            }),
+            breakpointsListFromTokenManager({
+                input: {
+                    names: ['xxxl', 'xxl', 'xl', 'lg', 'md', 'sm', 'xs', 'xxs', 'xxxs'],
+                },
+                output: {
+                    stylesDir: './breakpointsList',
+                    scssFileName: 'breakpointsList.scss',
+                },
+            }),
+            containerFromTokenManager({
+                input: {
+                    containerWidth: 1200,
+                    layer: 'lalala',
+                    isModule: false,
+                },
+                output: {
+                    stylesDir: './container',
+                    fileName: 'containerCSS',
                 },
             }),
         ].map(module => module.executor({ figmaApiClient, tokenManagerClient }))
