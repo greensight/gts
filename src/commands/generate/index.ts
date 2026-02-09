@@ -1,6 +1,5 @@
-import fs from 'fs';
-import path from 'path';
-
+// import fs from 'fs';
+// import path from 'path';
 import { Config } from '../../classes/Config';
 import { FigmaAPI } from '../../classes/FigmaApi';
 import { FileStorage } from '../../classes/FileStorage';
