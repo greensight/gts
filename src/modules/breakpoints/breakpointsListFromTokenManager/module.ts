@@ -9,7 +9,7 @@ export interface IBreakpointListFromTokenManagerInput {
 
 export interface IBreakpointListFromTokenManagerOutput {
     stylesDir: string;
-    scssFileName?: string;
+    fileName?: string;
 }
 
 export interface IBreakpointListFromTokenManagerParams {
@@ -40,7 +40,7 @@ const extractBreakpointsForMap = (gridStyles: Record<string, any>, names: string
 
 export const breakpointsListFromTokenManager = ({
     input = {},
-    output: { stylesDir, scssFileName = 'breakpointList.scss' },
+    output: { stylesDir, fileName = 'breakpointList' },
 }: IBreakpointListFromTokenManagerParams): IModule => ({
     name: 'breakpointsList/tokenManager',
     executor: async ({ tokenManagerClient }) => {
@@ -78,7 +78,7 @@ export const breakpointsListFromTokenManager = ({
             await generateBreakpointListFiles({
                 breakpointTokens,
                 stylesDir,
-                scssFileName,
+                fileName,
             });
 
             console.log(`[breakpointsList/tokenManager] SCSS breakpoint map generated successfully.`);

@@ -1,5 +1,5 @@
 import type { IBreakpointToken } from '../types';
-import { tokensToNumericObject, deleteAndWriteFile } from '../utils';
+import { deleteAndWriteFile, tokensToNumericObject } from '../utils';
 
 export const buildSCSSMapContent = (breakpointTokens: IBreakpointToken[]): string => {
     const numericValues = tokensToNumericObject(breakpointTokens);
@@ -15,19 +15,19 @@ ${mapEntries}
 $defaultBreakpoint: '${defaultBreakpoint}';`;
 };
 
-export const writeBreakpointListFiles = async (scssContent: string, stylesDir: string, scssFileName: string) => {
-    await deleteAndWriteFile(scssFileName, scssContent, stylesDir);
+export const writeBreakpointListFiles = async (scssContent: string, stylesDir: string, fileName: string) => {
+    await deleteAndWriteFile(fileName, scssContent, stylesDir);
 };
 
 export const generateBreakpointListFiles = async ({
     breakpointTokens,
     stylesDir,
-    scssFileName,
+    fileName,
 }: {
     breakpointTokens: IBreakpointToken[];
     stylesDir: string;
-    scssFileName: string;
+    fileName: string;
 }) => {
     const scssContent = buildSCSSMapContent(breakpointTokens);
-    await writeBreakpointListFiles(scssContent, stylesDir, scssFileName);
+    await writeBreakpointListFiles(scssContent, stylesDir, `${fileName}.scss`);
 };

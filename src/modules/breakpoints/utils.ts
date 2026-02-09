@@ -12,10 +12,13 @@ export const parseBreakpointValue = (token: IBreakpointToken): number => {
  * Converts array of breakpoint tokens to object with numeric values
  */
 export const tokensToNumericObject = (tokens: IBreakpointToken[]): Record<string, number> => {
-    return tokens.reduce((acc, token) => ({
-        ...acc,
-        [token.name]: parseBreakpointValue(token)
-    }), {});
+    return tokens.reduce(
+        (acc, token) => ({
+            ...acc,
+            [token.name]: parseBreakpointValue(token),
+        }),
+        {}
+    );
 };
 
 /**
@@ -29,11 +32,7 @@ export const writeFile = async (fileName: string, content: string, directory: st
     await FileStorage.write(fileName, content, { directory });
 };
 
-export const deleteAndWriteFile = async (
-    fileName: string,
-    content: string,
-    directory: string
-): Promise<void> => {
+export const deleteAndWriteFile = async (fileName: string, content: string, directory: string): Promise<void> => {
     await deleteFile(fileName, directory);
     await writeFile(fileName, content, directory);
 };

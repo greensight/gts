@@ -42,7 +42,7 @@ export interface ITypographyValue {
     textDecoration: 'none' | 'underline' | 'line-through';
 }
 
-export interface TypographyFigmaToken extends IBaseFigmaToken {
+export interface ITypographyFigmaToken extends IBaseFigmaToken {
     $type: 'typography';
     $value: ITypographyValue;
 }
@@ -81,7 +81,7 @@ export type TFigmaTokenValue = string | ITokenFile | TFigmaToken | ITypographyVa
 export type TFigmaToken =
     | IColorFigmaToken
     | IDimensionFigmaToken
-    | TypographyFigmaToken
+    | ITypographyFigmaToken
     | IShadowFigmaToken
     | IGridFigmaToken
     | IStringFigmaToken;

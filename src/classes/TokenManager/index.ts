@@ -322,13 +322,15 @@ export class TokenManager {
 
         for (const subgroup of Object.values(this.variables)) {
             const token = get(subgroup, variablePath) as IDSTokenVariable;
-            if (!token?.value) return;
+            if (!token?.value) continue;
 
             if (typeof token.value === 'object') {
                 if (mode) return (token.value as TDSTokenVariableValueWithModes)[mode];
-                else return;
+                else {
+                    const key = Object.keys(token.value)[0];
+                    return (token.value as TDSTokenVariableValueWithModes)[key];
+                }
             }
-            return;
         }
     }
 }
