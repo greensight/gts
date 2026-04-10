@@ -33,11 +33,11 @@ export const buildCSSVariables = (colorTokens: IColorToken[]): Record<string, st
 };
 
 export const buildCSSContent = (cssVariables: Record<string, string[]>): string => {
-    const rootBlock = formatCSSBlock(':root', cssVariables.root);
+    const rootBlock = formatCSSBlock('.default-colors', cssVariables.root);
     const modeBlocks = Object.entries(cssVariables)
         .reduce<string[]>((acc, [modeName, variables]) => {
             if (modeName === 'root' || !variables.length) return acc;
-            const block = formatCSSBlock(formatModeClassName(modeName), variables);
+            const block = formatCSSBlock(formatModeClassName(`${modeName}-colors`), variables);
             if (block) acc.push(block);
             return acc;
         }, [])
@@ -47,7 +47,7 @@ export const buildCSSContent = (cssVariables: Record<string, string[]>): string 
 };
 
 export const buildJSONContent = (colorTokens: IColorToken[]): string => {
-    const jsonObject = colorTokens.reduce((acc, c) => ({ ...acc, [c.name]: c.value }), {});
+    const jsonObject = colorTokens.reduce((acc, c) => ({ ...acc, [c.name]: `var(${getCSSVariableName(c.name)})` }), {});
     return JSON.stringify(jsonObject);
 };
 

@@ -1,10 +1,5 @@
 import type { TokenManager } from '../../../classes/TokenManager';
-import type {
-    IBaseToken,
-    IDSTokenStyleColor,
-    TDSTokenValue,
-    TDSTokenVariableValueWithModes,
-} from '../../../classes/TokenManager/types';
+import type { IBaseToken, TDSTokenValue, TDSTokenVariableValueWithModes } from '../../../classes/TokenManager/types';
 import type { IColorToken, TColorTokenValue } from '../../colors/types';
 import { generateColorFiles } from '../../colors/utils';
 import type { IModule } from '../../types';
@@ -48,10 +43,18 @@ const flattenTokens = (tokenStructures: ITokenStructures, name: string): Record<
                 const modes = Object.keys(token.value);
                 const value =
                     modes.length > 1 ? token.value : (token.value as TDSTokenVariableValueWithModes)[modes[0]];
-                const variable = { [concatName]: variableToColorToken(value as IDSTokenStyleColor['value']) } as Record<
-                    string,
-                    TColorTokenValue
-                >;
+                const parsedValue =
+                    typeof value === 'object'
+                        ? Object.keys(value).reduce(
+                              (accValue, mode) => ({
+                                  ...accValue,
+                                  [mode]: variableToColorToken((value as TDSTokenVariableValueWithModes)[mode]),
+                              }),
+                              {}
+                          )
+                        : variableToColorToken(value);
+
+                const variable = { [concatName]: parsedValue } as Record<string, TColorTokenValue>;
                 return { ...acc, ...variable };
             }
             const flatTokens = flattenTokens(token, concatName);
@@ -65,7 +68,7 @@ const nameParser = (name: string) => `cl-${name}`;
 const resolveColorTokens = (tokens: ITokenStructures, tokenManagerClient: TokenManager): ITokenStructures => {
     return Object.keys(tokens).reduce<ITokenStructures>((acc, key) => {
         const token = tokens[key];
-
+        if (token.type && token.type !== 'color') return acc;
         if (token.type && token.value) {
             const resolvedColorTokenValue =
                 typeof token.value === 'string'
@@ -119,11 +122,9 @@ export const colorsFromTokenManager = ({
                 const variableColors = includeVariables
                     .map(key => {
                         const variable = variables[key];
-                        if (variable.type !== 'color') return;
                         return variable;
                     })
                     .filter(Boolean) as ITokenStructures[];
-
                 tokens.push(...variableColors);
             }
 
@@ -135,12 +136,10 @@ export const colorsFromTokenManager = ({
                         []
                     )
                 );
-
             if (colorTokens.length === 0) {
                 console.warn(`[colors/tokenManager] No color tokens generated`);
                 return;
             }
-
             console.log(`[colors/tokenManager] Generated ${colorTokens.length} color tokens`);
             console.log(`[colors/tokenManager] Writing files to ${jsonDir} and ${stylesDir}...`);
 
