@@ -8,16 +8,15 @@ export interface IBreakpoints {
     [key: string]: string;
 }
 
+export type IFontFamilyMap = Record<string, string>;
+
 export interface ITypographyFromTokenManagerInput {
     breakpoints: IBreakpoints;
-    isModule?: boolean;
+    fontFamily?: IFontFamilyMap;
 }
 
 export interface ITypographyFromTokenManagerOutput {
-    jsonDir: string;
-    stylesDir: string;
-    jsonFileName?: string;
-    cssFileName?: string;
+    dir: string;
 }
 
 export interface ITypographyFromTokenManagerParams {
@@ -90,16 +89,13 @@ const flattenTokens = (tokenStructure: ITokenStructures, name?: string): Record<
     }, {});
 };
 
-export const typographyFromTokenManager = ({
-    input,
-    output: { jsonDir, stylesDir, jsonFileName = 'typography', cssFileName = 'typography' },
-}: ITypographyFromTokenManagerParams): IModule => ({
+export const typographyFromTokenManager = ({ input, output: { dir } }: ITypographyFromTokenManagerParams): IModule => ({
     name: 'typography/tokenManager',
     executor: async ({ tokenManagerClient }) => {
         try {
             console.log(`[typography/tokenManager] Generating typography from TokenManager...`);
 
-            const { breakpoints, isModule } = input;
+            const { breakpoints, fontFamily } = input;
 
             // Check if TokenManager has loaded tokens
             if (!tokenManagerClient.isLoaded()) {
@@ -130,16 +126,13 @@ export const typographyFromTokenManager = ({
             }
 
             console.log(`[typography/tokenManager] Generated ${typographyTokens.length} typography tokens`);
-            console.log(`[typography/tokenManager] Writing files to ${jsonDir} and ${stylesDir}...`);
+            console.log(`[typography/tokenManager] Writing files to ${dir}...`);
 
             await generateTypographyFiles({
                 typographyTokens,
-                jsonDir,
-                stylesDir,
-                jsonFileName,
-                cssFileName,
+                dir,
                 breakpoints,
-                isModule,
+                fontFamily: fontFamily || {},
             });
 
             console.log(`[typography/tokenManager] ✅ Successfully generated typography files`);

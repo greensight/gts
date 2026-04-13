@@ -2,10 +2,9 @@
 // import path from 'path';
 import { Config } from '../../classes/Config';
 import { FigmaAPI } from '../../classes/FigmaApi';
-import { FileStorage } from '../../classes/FileStorage';
 import { TokenManager } from '../../classes/TokenManager';
 
-// import { colorsFromTokenManager, shadowsFromTokenManager } from '../../modules';
+// import { colorsFromTokenManager, shadowsFromTokenManager, typographyFromTokenManager } from '../../modules';
 
 // import {
 //     breakpointsFromTokenManager,
@@ -145,7 +144,6 @@ export const generate = async () => {
         //     }),
         //     typographyFromTokenManager({
         //         input: {
-        //             isModule: true,
         //             breakpoints: {
         //                 desktop: '1440',
         //                 mobile: '768',
@@ -153,8 +151,7 @@ export const generate = async () => {
         //             },
         //         },
         //         output: {
-        //             jsonDir: './typography',
-        //             stylesDir: './typography',
+        //             dir: './typography',
         //         },
         //     }),
         // ].map(module => module.executor({ figmaApiClient, tokenManagerClient }))
@@ -175,6 +172,21 @@ export const generate = async () => {
         //         },
         //         output: {
         //             dir: './shadows',
+        //         },
+        //     }),
+        //     typographyFromTokenManager({
+        //         input: {
+        //             breakpoints: {
+        //                 desktop: '1440',
+        //                 mobile: '768',
+        //                 blabla: '761',
+        //             },
+        //             fontFamily: {
+        //                 'Sana Sans Alt': 'var(--sans-sans-alt)',
+        //             },
+        //         },
+        //         output: {
+        //             dir: './typography',
         //         },
         //     }),
         // ].map(module => module.executor({ figmaApiClient, tokenManagerClient }))
