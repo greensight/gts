@@ -4,10 +4,3 @@ export interface IBreakpointToken {
     name: string;
     value: string;
 }
-
-export interface IBreakpointListToken {
-    name: string;
-    value: string;
-}
-
-export type TBreakpointExtension = 'css' | 'scss';

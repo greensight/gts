@@ -2,9 +2,15 @@
 // import path from 'path';
 import { Config } from '../../classes/Config';
 import { FigmaAPI } from '../../classes/FigmaApi';
+import { FileStorage } from '../../classes/FileStorage';
 import { TokenManager } from '../../classes/TokenManager';
 
-// import { colorsFromTokenManager, shadowsFromTokenManager, typographyFromTokenManager } from '../../modules';
+// import {
+//     breakpointsFromTokenManager,
+//     colorsFromTokenManager,
+//     shadowsFromTokenManager,
+//     typographyFromTokenManager,
+// } from '../../modules';
 
 // import {
 //     breakpointsFromTokenManager,
@@ -187,6 +193,14 @@ export const generate = async () => {
         //         },
         //         output: {
         //             dir: './typography',
+        //         },
+        //     }),
+        //     breakpointsFromTokenManager({
+        //         input: {
+        //             names: ['xxxl', 'xl', 'lg', 'md', 'sm', 'xs', 'xxs', 'xxxs'],
+        //         },
+        //         output: {
+        //             dir: './breakpoints',
         //         },
         //     }),
         // ].map(module => module.executor({ figmaApiClient, tokenManagerClient }))

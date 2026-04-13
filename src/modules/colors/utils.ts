@@ -36,11 +36,11 @@ export const buildCSSVariables = (colorTokens: IColorToken[]): Record<string, st
 };
 
 export const buildCSSContent = (cssVariables: Record<string, string[]>): string => {
-    const rootBlock = formatCSSBlock('.colors-variables', cssVariables.root);
+    const rootBlock = formatCSSBlock('.color-variables', cssVariables.root);
     const modeBlocks = Object.entries(cssVariables)
         .reduce<string[]>((acc, [modeName, variables]) => {
             if (modeName === 'root' || !variables.length) return acc;
-            const block = formatCSSBlock(formatModeClassName(`${modeName}-colors-variables`), variables);
+            const block = formatCSSBlock(formatModeClassName(`${modeName}-color-variables`), variables);
             if (block) acc.push(block);
             return acc;
         }, [])

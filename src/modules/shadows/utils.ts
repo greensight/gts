@@ -37,11 +37,11 @@ export const buildShadowCSSVariables = (shadowTokens: IShadowToken[]): Record<st
     );
 
 export const buildShadowCSSContent = (cssVariables: Record<string, string[]>): string => {
-    const rootBlock = formatCSSBlock('.shadows-variables', cssVariables.root);
+    const rootBlock = formatCSSBlock('.shadow-variables', cssVariables.root);
     const modeBlocks = Object.entries(cssVariables)
         .reduce<string[]>((acc, [modeName, variables]) => {
             if (modeName === 'root' || !variables.length) return acc;
-            const block = formatCSSBlock(formatModeClassName(`${modeName}-shadows-variables`), variables);
+            const block = formatCSSBlock(formatModeClassName(`${modeName}-shadow-variables`), variables);
             if (block) acc.push(block);
             return acc;
         }, [])

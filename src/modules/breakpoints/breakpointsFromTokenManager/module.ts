@@ -1,18 +1,14 @@
 import type { IModule } from '../../types';
 import { BREAKPOINTS_NAMES } from '../types';
-import type { IBreakpointToken, TBreakpointExtension } from '../types';
+import type { IBreakpointToken } from '../types';
 import { generateBreakpointFiles } from './utils';
 
 export interface IBreakpointsFromTokenManagerInput {
-    extensions?: TBreakpointExtension[];
     names?: string[];
 }
 
 export interface IBreakpointsFromTokenManagerOutput {
-    jsonDir: string;
-    stylesDir: string;
-    jsonFileName?: string;
-    stylesFileName?: string;
+    dir: string;
 }
 
 export interface IBreakpointsFromTokenManagerParams {
@@ -53,14 +49,14 @@ const extractBreakpointsFromGrid = (gridStyles: Record<string, any>, names: stri
 
 export const breakpointsFromTokenManager = ({
     input = {},
-    output: { jsonDir, stylesDir, jsonFileName = 'breakpoints.json', stylesFileName = 'breakpoints' },
+    output: { dir },
 }: IBreakpointsFromTokenManagerParams): IModule => ({
     name: 'breakpoints/tokenManager',
     executor: async ({ tokenManagerClient }) => {
         try {
             console.log(`[breakpoints/tokenManager] Generating breakpoints from TokenManager...`);
 
-            const { extensions = ['css'], names = BREAKPOINTS_NAMES } = input;
+            const { names = BREAKPOINTS_NAMES } = input;
 
             // Check if TokenManager has loaded tokens
             if (!tokenManagerClient.isLoaded()) {
@@ -86,20 +82,21 @@ export const breakpointsFromTokenManager = ({
             console.log(
                 `[breakpoints/tokenManager] Found ${breakpointTokens.length} breakpoints: ${breakpointTokens.map(bp => bp.name).join(', ')}`
             );
+            console.log(`[breakpoints/tokenManager] Writing files to ${dir}...`);
 
             // Generate files
             await generateBreakpointFiles({
                 breakpointTokens,
-                jsonDir,
-                stylesDir,
-                jsonFileName,
-                stylesFileName,
-                extensions,
+                dir,
             });
 
-            console.log(`[breakpoints/tokenManager] Breakpoints generated successfully.`);
+            console.log(`[breakpoints/tokenManager] ✅ Successfully generated breakpoint files`);
         } catch (error) {
-            console.error(`[breakpoints/tokenManager] Error:`, error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[breakpoints/tokenManager] ❌ Failed to generate breakpoints:`, errorMessage);
+            if (error instanceof Error && error.stack) {
+                console.error(`[breakpoints/tokenManager] Stack trace:`, error.stack);
+            }
             throw error;
         }
     },

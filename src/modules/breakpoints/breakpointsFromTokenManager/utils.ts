@@ -1,103 +1,56 @@
-import type { IBreakpointToken, TBreakpointExtension } from '../types';
+import type { IBreakpointToken } from '../types';
 import { deleteAndWriteFile, tokensToNumericObject } from '../utils';
 
-export const formatCSSBlock = (selector: string, variables: string[]) => {
-    if (!variables.length) return '';
-    const indentedVars = variables.map(v => `    ${v}`).join('\n');
-    return `${selector} {\n${indentedVars}\n}`;
-};
+const buildCSSContent = (breakpointTokens: IBreakpointToken[]): string => {
+    const variables = breakpointTokens.map(({ name, value }) => `    --${name}: ${value};`);
 
-export const formatSCSSVariables = (variables: string[]) => {
-    if (!variables.length) return '';
-    return variables.join('\n');
-};
-
-export const getCSSVariableName = (name: string) => `--${name}`;
-
-export const getSCSSVariableName = (name: string) => `$${name}`;
-
-export const buildCSSVariables = (breakpointTokens: IBreakpointToken[]): string[] => {
-    return breakpointTokens.map(token => `${getCSSVariableName(token.name)}: ${token.value}px;`);
-};
-
-export const buildSCSSVariables = (breakpointTokens: IBreakpointToken[]): string[] => {
-    return breakpointTokens.map(token => `${getSCSSVariableName(token.name)}: ${token.value}px;`);
-};
-
-export const buildCSSContent = (cssVariables: string[]): string => {
-    return formatCSSBlock(':root', cssVariables);
-};
-
-export const buildSCSSContent = (scssVariables: string[]): string => {
-    return formatSCSSVariables(scssVariables);
-};
-
-export const buildJSONContent = (breakpointTokens: IBreakpointToken[]): string => {
-    const jsonObject = tokensToNumericObject(breakpointTokens);
-    return JSON.stringify(jsonObject);
-};
-
-export const writeBreakpointFiles = async (
-    jsonContent: string,
-    cssContent: string | null,
-    scssContent: string | null,
-    jsonDir: string,
-    stylesDir: string,
-    jsonFileName: string,
-    cssFileName: string | null,
-    scssFileName: string | null
-) => {
-    const operations = [];
-
-    operations.push(deleteAndWriteFile(jsonFileName, jsonContent, jsonDir));
-
-    if (cssFileName && cssContent) {
-        operations.push(deleteAndWriteFile(cssFileName, cssContent, stylesDir));
+    if (!variables.length) {
+        return '';
     }
 
-    if (scssFileName && scssContent) {
-        operations.push(deleteAndWriteFile(scssFileName, scssContent, stylesDir));
+    return `.breakpoint-variables {\n${variables.join('\n')}\n}\n`;
+};
+
+const buildSCSSContent = (breakpointTokens: IBreakpointToken[]): string => {
+    const entries = breakpointTokens.map(({ name, value }) => `    ${name}: ${value}`);
+    const defaultBreakpoint = breakpointTokens.at(-1)?.name;
+
+    if (!entries.length || !defaultBreakpoint) {
+        return '';
     }
 
-    await Promise.all(operations);
+    return `$breakpointList: (\n${entries.join(',\n')}\n);\n\n$defaultBreakpoint: '${defaultBreakpoint}';\n`;
+};
+
+const buildIndexContent = (breakpoints: Record<string, number>): string => {
+    return [
+        `const breakpoints = ${JSON.stringify(breakpoints, null, 4)} as const;`,
+        '',
+        'const BREAKPOINTS_NAMES = Object.keys(breakpoints);',
+        '',
+        'type BreakpointsKeysType = keyof typeof breakpoints;',
+        "type AllowMedia = 'all' | BreakpointsKeysType;",
+        '',
+        'export { breakpoints, BREAKPOINTS_NAMES };',
+        'export type { BreakpointsKeysType, AllowMedia };',
+        '',
+    ].join('\n');
 };
 
 interface IGenerateFilesParams {
     breakpointTokens: IBreakpointToken[];
-    jsonDir: string;
-    stylesDir: string;
-    jsonFileName: string;
-    stylesFileName: string;
-    extensions: TBreakpointExtension[];
+    dir: string;
 }
 
-export const generateBreakpointFiles = async ({
-    breakpointTokens,
-    jsonDir,
-    stylesDir,
-    jsonFileName,
-    stylesFileName,
-    extensions,
-}: IGenerateFilesParams) => {
-    const cssVariables = buildCSSVariables(breakpointTokens);
-    const scssVariables = buildSCSSVariables(breakpointTokens);
+export const generateBreakpointFiles = async ({ breakpointTokens, dir }: IGenerateFilesParams) => {
+    const breakpoints = tokensToNumericObject(breakpointTokens);
+    const cssContent = buildCSSContent(breakpointTokens);
+    const scssContent = buildSCSSContent(breakpointTokens);
+    const indexContent = buildIndexContent(breakpoints);
 
-    const cssContent = extensions.includes('css') ? buildCSSContent(cssVariables) : null;
-    const scssContent = extensions.includes('scss') ? buildSCSSContent(scssVariables) : null;
-
-    const cssFileName = extensions.includes('css') ? `${stylesFileName}.css` : null;
-    const scssFileName = extensions.includes('scss') ? `${stylesFileName}.scss` : null;
-
-    const jsonContent = buildJSONContent(breakpointTokens);
-
-    await writeBreakpointFiles(
-        jsonContent,
-        cssContent,
-        scssContent,
-        jsonDir,
-        stylesDir,
-        jsonFileName,
-        cssFileName,
-        scssFileName
-    );
+    await Promise.all([
+        deleteAndWriteFile('styles.css', cssContent, dir),
+        deleteAndWriteFile('styles.scss', scssContent, dir),
+        deleteAndWriteFile('index.ts', indexContent, dir),
+    ]);
 };
