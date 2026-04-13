@@ -11,10 +11,7 @@ export interface IColorsFromTokenManagerInput {
 }
 
 export interface IColorsFromTokenManagerOutput {
-    jsonDir: string;
-    stylesDir: string;
-    jsonFileName?: string;
-    cssFileName?: string;
+    dir: string;
 }
 
 export interface IColorsFromTokenManagerParams {
@@ -63,8 +60,6 @@ const flattenTokens = (tokenStructures: ITokenStructures, name: string): Record<
         {} as Record<string, TColorTokenValue>
     );
 
-const nameParser = (name: string) => `cl-${name}`;
-
 const resolveColorTokens = (tokens: ITokenStructures, tokenManagerClient: TokenManager): ITokenStructures => {
     return Object.keys(tokens).reduce<ITokenStructures>((acc, key) => {
         const token = tokens[key];
@@ -85,10 +80,7 @@ const resolveColorTokens = (tokens: ITokenStructures, tokenManagerClient: TokenM
     }, {});
 };
 
-export const colorsFromTokenManager = ({
-    input = {},
-    output: { jsonDir, stylesDir, jsonFileName = 'colors.json', cssFileName = 'colors.css' },
-}: IColorsFromTokenManagerParams): IModule => ({
+export const colorsFromTokenManager = ({ input = {}, output: { dir } }: IColorsFromTokenManagerParams): IModule => ({
     name: 'colors/tokenManager',
     executor: async ({ tokenManagerClient }) => {
         try {
@@ -132,7 +124,7 @@ export const colorsFromTokenManager = ({
                 .map(token => resolveColorTokens(token, tokenManagerClient))
                 .flatMap(item =>
                     Object.entries(flattenTokens(item, '')).reduce<IColorToken[]>(
-                        (arr, [name, value]) => [...arr, { name: nameParser(name), value }],
+                        (arr, [name, value]) => [...arr, { name, value }],
                         []
                     )
                 );
@@ -141,14 +133,11 @@ export const colorsFromTokenManager = ({
                 return;
             }
             console.log(`[colors/tokenManager] Generated ${colorTokens.length} color tokens`);
-            console.log(`[colors/tokenManager] Writing files to ${jsonDir} and ${stylesDir}...`);
+            console.log(`[colors/tokenManager] Writing files to ${dir}...`);
 
             await generateColorFiles({
                 colorTokens,
-                jsonDir,
-                stylesDir,
-                jsonFileName,
-                cssFileName,
+                dir,
             });
 
             console.log(`[colors/tokenManager] ✅ Successfully generated color files`);

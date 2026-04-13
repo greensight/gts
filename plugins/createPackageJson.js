@@ -35,6 +35,6 @@ export const createDistPackageJson = () => {
         },
     };
 
-    // // Записываем новый package.json в dist
+    // Записываем новый package.json в dist
     writeFileSync(distPackageJsonPath, JSON.stringify(distPackageJson, null, 2));
 };

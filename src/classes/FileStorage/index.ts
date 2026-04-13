@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 interface IWriteOptions {
@@ -105,6 +105,6 @@ export class FileStorage {
             return;
         }
 
-        await rm(targetPath, { force: true });
+        await rm(targetPath, { recursive: true, force: true });
     }
 }

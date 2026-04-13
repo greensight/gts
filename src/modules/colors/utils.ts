@@ -1,6 +1,9 @@
 import { FileStorage } from '../../classes/FileStorage';
 import type { IColorToken } from './types';
 
+const cssFileName = 'styles.css';
+const moduleFileName = 'index.ts';
+
 export const formatCSSBlock = (selector: string, variables: string[]) => {
     if (!variables.length) return '';
     const indentedVars = variables.map(v => `    ${v}`).join('\n');
@@ -10,7 +13,7 @@ export const formatCSSBlock = (selector: string, variables: string[]) => {
 export const formatModeClassName = (modeName: string) => `.${modeName.replace(/\s+/g, '-').toLowerCase()}`;
 
 export const getVariableName = (name: string) => name.replaceAll(/ /g, '').split('/').at(-1) as string;
-export const getCSSVariableName = (name: string) => `--${name}`;
+export const getCSSVariableName = (name: string) => `--cl-${name}`;
 
 export const buildCSSVariables = (colorTokens: IColorToken[]): Record<string, string[]> => {
     return colorTokens.reduce<Record<string, string[]>>(
@@ -33,11 +36,11 @@ export const buildCSSVariables = (colorTokens: IColorToken[]): Record<string, st
 };
 
 export const buildCSSContent = (cssVariables: Record<string, string[]>): string => {
-    const rootBlock = formatCSSBlock('.default-colors', cssVariables.root);
+    const rootBlock = formatCSSBlock('.colors-variables', cssVariables.root);
     const modeBlocks = Object.entries(cssVariables)
         .reduce<string[]>((acc, [modeName, variables]) => {
             if (modeName === 'root' || !variables.length) return acc;
-            const block = formatCSSBlock(formatModeClassName(`${modeName}-colors`), variables);
+            const block = formatCSSBlock(formatModeClassName(`${modeName}-colors-variables`), variables);
             if (block) acc.push(block);
             return acc;
         }, [])
@@ -46,45 +49,41 @@ export const buildCSSContent = (cssVariables: Record<string, string[]>): string 
     return [rootBlock, modeBlocks].filter(Boolean).join('\n\n');
 };
 
-export const buildJSONContent = (colorTokens: IColorToken[]): string => {
-    const jsonObject = colorTokens.reduce((acc, c) => ({ ...acc, [c.name]: `var(${getCSSVariableName(c.name)})` }), {});
-    return JSON.stringify(jsonObject);
+export const buildTSColorsContent = (colorTokens: IColorToken[]): string => {
+    const colorsObjectContent = colorTokens
+        .map(c => `    '${c.name}': 'var(${getCSSVariableName(c.name)})'`)
+        .join(',\n');
+    const colorsObject = `const colors = {\n${colorsObjectContent}\n} as const;`;
+
+    return `${colorsObject}\n\ntype ColorsKeysType = keyof typeof colors;\n\nexport { colors, type ColorsKeysType };\n`;
 };
 
-export const writeColorFiles = async (
-    jsonContent: string,
-    cssContent: string,
-    jsonDir: string,
-    stylesDir: string,
-    jsonFileName: string,
-    cssFileName: string
-) => {
-    await Promise.all([FileStorage.delete(jsonFileName, jsonDir), FileStorage.delete(cssFileName, stylesDir)]);
+export const writeColorFiles = async ({
+    tsContent,
+    cssContent,
+    dir,
+}: {
+    tsContent: string;
+    cssContent: string;
+    dir: string;
+}) => {
+    await FileStorage.delete(dir);
 
-    const jsonPromise = FileStorage.write(jsonFileName, jsonContent, { directory: jsonDir });
-    const cssPromise = FileStorage.write(cssFileName, cssContent, { directory: stylesDir });
+    const tsPromise = FileStorage.write(moduleFileName, tsContent, { directory: dir });
+    const cssPromise = FileStorage.write(cssFileName, cssContent, { directory: dir });
 
-    await Promise.all([jsonPromise, cssPromise]);
+    await Promise.all([tsPromise, cssPromise]);
 };
 
 interface IGenerateFilesParams {
     colorTokens: IColorToken[];
-    jsonDir: string;
-    stylesDir: string;
-    jsonFileName: string;
-    cssFileName: string;
+    dir: string;
 }
 
-export const generateColorFiles = async ({
-    colorTokens,
-    jsonDir,
-    stylesDir,
-    jsonFileName,
-    cssFileName,
-}: IGenerateFilesParams) => {
+export const generateColorFiles = async ({ colorTokens, dir }: IGenerateFilesParams) => {
     const cssVariables = buildCSSVariables(colorTokens);
     const cssContent = buildCSSContent(cssVariables);
-    const jsonContent = buildJSONContent(colorTokens);
+    const tsContent = buildTSColorsContent(colorTokens);
 
-    await writeColorFiles(jsonContent, cssContent, jsonDir, stylesDir, jsonFileName, cssFileName);
+    await writeColorFiles({ tsContent, cssContent, dir });
 };

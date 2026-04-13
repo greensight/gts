@@ -4,15 +4,11 @@ import type { IShadowToken, TShadowTokenValue } from './types';
 import { generateShadowFiles, getCSSVariableValue } from './utils';
 
 export interface IShadowsFromTokenManagerInput {
-    includeVariables?: string[];
     includeStyles?: boolean;
 }
 
 export interface IShadowsFromTokenManagerOutput {
-    jsonDir: string;
-    stylesDir: string;
-    jsonFileName?: string;
-    cssFileName?: string;
+    dir: string;
 }
 
 export interface IShadowsFromTokenManagerParams {
@@ -41,22 +37,15 @@ const flattenTokens = (tokenStructures: IDSStyles['effect'], name: string): Reco
         {} as Record<string, TShadowTokenValue>
     );
 
-const nameParser = (name: string) => `sh-${name}`;
-
-export const shadowsFromTokenManager = ({
-    input = {},
-    output: { jsonDir, stylesDir, jsonFileName = 'shadows.json', cssFileName = 'shadows.css' },
-}: IShadowsFromTokenManagerParams): IModule => ({
+export const shadowsFromTokenManager = ({ input = {}, output: { dir } }: IShadowsFromTokenManagerParams): IModule => ({
     name: 'shadows/tokenManager',
     executor: async ({ tokenManagerClient }) => {
         try {
             console.log(`[shadows/tokenManager] Generating shadows from TokenManager...`);
 
-            const { includeVariables, includeStyles = true } = input;
-
-            // Validate input
-            if (!includeVariables?.length && !includeStyles) {
-                throw new Error('Either includeVariables or includeStyles must be enabled');
+            const { includeStyles = true } = input;
+            if (!includeStyles) {
+                throw new Error('includeStyles must be enabled for shadows generation');
             }
 
             // Check if TokenManager has loaded tokens
@@ -75,11 +64,10 @@ export const shadowsFromTokenManager = ({
 
             const shadowTokens = tokens.flatMap(item =>
                 Object.entries(flattenTokens(item, '')).reduce<IShadowToken[]>(
-                    (arr, [name, value]) => [...arr, { name: nameParser(name), value }],
+                    (arr, [name, value]) => [...arr, { name, value }],
                     []
                 )
             );
-            console.log('shadowTokens=', shadowTokens);
 
             if (shadowTokens.length === 0) {
                 console.warn(`[shadows/tokenManager] No shadow tokens generated`);
@@ -87,14 +75,11 @@ export const shadowsFromTokenManager = ({
             }
 
             console.log(`[shadows/tokenManager] Generated ${shadowTokens.length} shadow tokens`);
-            console.log(`[shadows/tokenManager] Writing files to ${jsonDir} and ${stylesDir}...`);
+            console.log(`[shadows/tokenManager] Writing files to ${dir}...`);
 
             await generateShadowFiles({
                 shadowTokens,
-                jsonDir,
-                stylesDir,
-                jsonFileName,
-                cssFileName,
+                dir,
             });
 
             console.log(`[shadows/tokenManager] ✅ Successfully generated shadow files`);

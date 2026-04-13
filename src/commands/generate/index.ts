@@ -5,6 +5,8 @@ import { FigmaAPI } from '../../classes/FigmaApi';
 import { FileStorage } from '../../classes/FileStorage';
 import { TokenManager } from '../../classes/TokenManager';
 
+// import { colorsFromTokenManager, shadowsFromTokenManager } from '../../modules';
+
 // import {
 //     breakpointsFromTokenManager,
 //     breakpointsListFromTokenManager,
@@ -156,6 +158,27 @@ export const generate = async () => {
         //         },
         //     }),
         // ].map(module => module.executor({ figmaApiClient, tokenManagerClient }))
+        // [
+        //     colorsFromTokenManager({
+        //         input: {
+        //             includeVariables: ['colors'],
+        //             // includeStyles: false,
+        //         },
+        //         output: {
+        //             dir: './colors',
+        //         },
+        //     }),
+        //     shadowsFromTokenManager({
+        //         input: {
+        //             // includeVariables: ['colors'],
+        //             // includeStyles: false,
+        //         },
+        //         output: {
+        //             dir: './shadows',
+        //         },
+        //     }),
+        // ].map(module => module.executor({ figmaApiClient, tokenManagerClient }))
+
         modules.map(module => module.executor({ figmaApiClient, tokenManagerClient }))
     );
 };

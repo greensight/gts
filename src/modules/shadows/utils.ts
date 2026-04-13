@@ -2,6 +2,9 @@ import { FileStorage } from '../../classes/FileStorage';
 import type { IShadowValue } from '../../classes/TokenManager/types';
 import type { IShadowToken } from './types';
 
+const cssFileName = 'styles.css';
+const moduleFileName = 'index.ts';
+
 export const formatCSSBlock = (selector: string, variables: string[]) => {
     if (!variables.length) return '';
     const indentedVars = variables.map(v => `    ${v}`).join('\n');
@@ -15,31 +18,30 @@ export const getCSSVariableName = (name: string) => `--${name}`;
 export const getCSSVariableValue = ({ offsetX, offsetY, blur, spread, color }: IShadowValue) =>
     `${offsetX} ${offsetY} ${blur} ${spread} ${color}`;
 
-export const buildShadowCSSVariables = (colorTokens: IShadowToken[]): Record<string, string[]> => {
-    return colorTokens.reduce<Record<string, string[]>>(
-        (acc, c) => {
-            const name = getCSSVariableName(c.name);
+export const buildShadowCSSVariables = (shadowTokens: IShadowToken[]): Record<string, string[]> =>
+    shadowTokens.reduce<Record<string, string[]>>(
+        (acc, token) => {
+            const cssVariableName = getCSSVariableName(token.name);
 
-            if (typeof c.value === 'object') {
-                Object.entries(c.value).forEach(([modeName, value]) => {
-                    if (!acc[modeName]) acc[modeName] = [];
-                    acc[modeName].push(`${name}: ${value};`);
-                });
-            } else {
-                acc.root.push(`${name}: ${c.value};`);
+            if (typeof token.value !== 'object') {
+                acc.root.push(`${cssVariableName}: ${token.value};`);
+                return acc;
             }
 
-            return acc;
+            return Object.entries(token.value).reduce<Record<string, string[]>>((modeAcc, [modeName, value]) => {
+                const modeVariables = modeAcc[modeName] ?? [];
+                return { ...modeAcc, [modeName]: [...modeVariables, `${cssVariableName}: ${value};`] };
+            }, acc);
         },
         { root: [] }
     );
-};
+
 export const buildShadowCSSContent = (cssVariables: Record<string, string[]>): string => {
-    const rootBlock = formatCSSBlock(':root', cssVariables.root);
+    const rootBlock = formatCSSBlock('.shadows-variables', cssVariables.root);
     const modeBlocks = Object.entries(cssVariables)
         .reduce<string[]>((acc, [modeName, variables]) => {
             if (modeName === 'root' || !variables.length) return acc;
-            const block = formatCSSBlock(formatModeClassName(modeName), variables);
+            const block = formatCSSBlock(formatModeClassName(`${modeName}-shadows-variables`), variables);
             if (block) acc.push(block);
             return acc;
         }, [])
@@ -48,45 +50,39 @@ export const buildShadowCSSContent = (cssVariables: Record<string, string[]>): s
     return [rootBlock, modeBlocks].filter(Boolean).join('\n\n');
 };
 
-export const buildShadowJSONContent = (shadowTokens: IShadowToken[]): string => {
-    const jsonObject = shadowTokens.reduce((acc, s) => ({ ...acc, [s.name]: s.value }), {});
-    return JSON.stringify(jsonObject);
+export const buildTSShadowsContent = (shadowTokens: IShadowToken[]): string => {
+    const shadowsObjectContent = shadowTokens.map(s => `    '${s.name}': 'var(${getCSSVariableName(s.name)})'`).join(',\n');
+    const shadowsObject = `const shadows = {\n${shadowsObjectContent}\n} as const;`;
+
+    return `${shadowsObject}\n\ntype ShadowsKeysType = keyof typeof shadows;\n\nexport { shadows, type ShadowsKeysType };\n`;
 };
 
-export const writeShadowFiles = async (
-    jsonContent: string,
-    cssContent: string,
-    jsonDir: string,
-    stylesDir: string,
-    jsonFileName: string,
-    cssFileName: string
-) => {
-    await Promise.all([FileStorage.delete(jsonFileName, jsonDir), FileStorage.delete(cssFileName, stylesDir)]);
+export const writeShadowFiles = async ({
+    tsContent,
+    cssContent,
+    dir,
+}: {
+    tsContent: string;
+    cssContent: string;
+    dir: string;
+}) => {
+    await FileStorage.delete(dir);
 
-    const jsonPromise = FileStorage.write(jsonFileName, jsonContent, { directory: jsonDir });
-    const cssPromise = FileStorage.write(cssFileName, cssContent, { directory: stylesDir });
+    const tsPromise = FileStorage.write(moduleFileName, tsContent, { directory: dir });
+    const cssPromise = FileStorage.write(cssFileName, cssContent, { directory: dir });
 
-    await Promise.all([jsonPromise, cssPromise]);
+    await Promise.all([tsPromise, cssPromise]);
 };
 
 interface IGenerateShadowFilesParams {
     shadowTokens: IShadowToken[];
-    jsonDir: string;
-    stylesDir: string;
-    jsonFileName: string;
-    cssFileName: string;
+    dir: string;
 }
 
-export const generateShadowFiles = async ({
-    shadowTokens,
-    jsonDir,
-    stylesDir,
-    jsonFileName,
-    cssFileName,
-}: IGenerateShadowFilesParams) => {
+export const generateShadowFiles = async ({ shadowTokens, dir }: IGenerateShadowFilesParams) => {
     const cssVariables = buildShadowCSSVariables(shadowTokens);
     const cssContent = buildShadowCSSContent(cssVariables);
-    const jsonContent = buildShadowJSONContent(shadowTokens);
+    const tsContent = buildTSShadowsContent(shadowTokens);
 
-    await writeShadowFiles(jsonContent, cssContent, jsonDir, stylesDir, jsonFileName, cssFileName);
+    await writeShadowFiles({ tsContent, cssContent, dir });
 };
