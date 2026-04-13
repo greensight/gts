@@ -6,14 +6,11 @@ import type { IContainerToken } from '../types';
 import { generateContainerFiles } from '../utils';
 
 export interface IContainerFromTokenManagerInput {
-    containerWidth?: number;
     layer?: string;
-    isModule?: boolean;
 }
 
 export interface IContainerFromTokenManagerOutput {
-    stylesDir: string;
-    fileName?: string;
+    dir: string;
 }
 
 export interface IContainerFromTokenManagerParams {
@@ -21,65 +18,54 @@ export interface IContainerFromTokenManagerParams {
     output: IContainerFromTokenManagerOutput;
 }
 
+const isZeroOffset = (offset: string): boolean => {
+    const normalizedOffset = offset.trim().toLowerCase();
+    return normalizedOffset === '0' || normalizedOffset === '0px';
+};
+
 /**
  * Extracts container tokens from grid styles tokens
  */
 const extractContainerTokens = (
     gridStyles: IDSTokens<IDSTokenStyleGrid>,
-    tokenManagerClient: TokenManager,
-    options: { width: number }
+    tokenManagerClient: TokenManager
 ): IContainerToken[] => {
-    const containerTokens: IContainerToken[] = [];
+    const sortedBreakpoints = Object.keys(gridStyles)
+        .filter(key => !isNaN(Number(key)))
+        .sort((a, b) => Number(b) - Number(a));
 
-    // Process each breakpoint
-    Object.keys(gridStyles).forEach(breakpointKey => {
+    const containerTokens = sortedBreakpoints.reduce<IContainerToken[]>((acc, breakpointKey) => {
         const gridData = gridStyles[breakpointKey];
-
-        if (gridData && gridData.value && Array.isArray(gridData.value)) {
-            const validGridItems = gridData.value.filter(
-                item => item.pattern === 'columns' && (item.alignment === 'center' || item.alignment === 'stretch')
-            );
-
-            validGridItems.forEach(item => {
-                if (item.alignment === 'center') {
-                    containerTokens.push({
-                        name: breakpointKey,
-                        value: {
-                            alignment: 'center',
-                            width: options.width,
-                            margin: 'auto',
-                        },
-                    });
-                }
-
-                if (item.alignment === 'stretch') {
-                    const margin = tokenManagerClient.resolveVariableValueString(item.offset);
-                    if (!margin) return;
-                    containerTokens.push({
-                        name: breakpointKey,
-                        value: {
-                            alignment: 'stretch',
-                            margin,
-                        },
-                    });
-                }
-            });
+        if (!gridData || !('value' in gridData) || !Array.isArray(gridData.value)) {
+            return acc;
         }
-    });
 
-    // Sort by breakpoint from largest to smallest
-    const sortedTokens = containerTokens.sort((a, b) => {
-        const aBreakpoint = parseInt(a.name);
-        const bBreakpoint = parseInt(b.name);
-        return bBreakpoint - aBreakpoint;
-    });
+        const columnsGridItem = gridData.value.find(item => item.pattern === 'columns');
+        if (!columnsGridItem?.offset) {
+            return acc;
+        }
 
-    // Remove duplicates - if consecutive tokens have same properties, remove the later one
-    const filteredTokens = sortedTokens.reduce<IContainerToken[]>((acc, current) => {
+        const resolvedOffset = tokenManagerClient.resolveVariableValueString(columnsGridItem.offset);
+        if (!resolvedOffset || typeof resolvedOffset !== 'string') {
+            return acc;
+        }
+        if (isZeroOffset(resolvedOffset)) {
+            return acc;
+        }
+
+        return [
+            ...acc,
+            {
+                breakpoint: Number(breakpointKey),
+                offset: resolvedOffset,
+            },
+        ];
+    }, []);
+
+    // Remove consecutive duplicates by offset
+    const filteredTokens = containerTokens.reduce<IContainerToken[]>((acc, current) => {
         const previous = acc[acc.length - 1];
-
-        // Check if current token has same properties as previous
-        const isDuplicate = previous && isEqual(previous.value, current.value);
+        const isDuplicate = previous && isEqual(previous.offset, current.offset);
 
         if (!isDuplicate) {
             acc.push(current);
@@ -93,14 +79,14 @@ const extractContainerTokens = (
 
 export const containerFromTokenManager = ({
     input = {},
-    output: { stylesDir, fileName = 'container' },
+    output: { dir },
 }: IContainerFromTokenManagerParams): IModule => ({
     name: 'container/tokenManager',
     executor: async ({ tokenManagerClient }) => {
         try {
             console.log(`[container/tokenManager] Generating container styles...`);
 
-            const { containerWidth = 1440, layer, isModule = true } = input;
+            const { layer } = input;
 
             // Check if TokenManager has loaded tokens
             if (!tokenManagerClient.isLoaded()) {
@@ -116,7 +102,7 @@ export const containerFromTokenManager = ({
             }
 
             // Extract container tokens
-            const containerTokens = extractContainerTokens(styles.grid, tokenManagerClient, { width: containerWidth });
+            const containerTokens = extractContainerTokens(styles.grid, tokenManagerClient);
 
             if (!containerTokens.length) {
                 console.warn(`[container/tokenManager] No container tokens found.`);
@@ -124,21 +110,24 @@ export const containerFromTokenManager = ({
             }
 
             console.log(
-                `[container/tokenManager] Found ${containerTokens.length} container tokens: ${containerTokens.map(c => c.name).join(', ')}`
+                `[container/tokenManager] Found ${containerTokens.length} container tokens: ${containerTokens.map(c => c.breakpoint).join(', ')}`
             );
+            console.log(`[container/tokenManager] Writing files to ${dir}...`);
 
-            // Generate container file
+            // Generate container files
             await generateContainerFiles({
                 containerTokens,
-                stylesDir,
-                fileName,
+                dir,
                 layer,
-                isModule,
             });
 
-            console.log(`[container/tokenManager] Container styles generated successfully.`);
+            console.log(`[container/tokenManager] ✅ Successfully generated container files`);
         } catch (error) {
-            console.error(`[container/tokenManager] Error:`, error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[container/tokenManager] ❌ Failed to generate container:`, errorMessage);
+            if (error instanceof Error && error.stack) {
+                console.error(`[container/tokenManager] Stack trace:`, error.stack);
+            }
             throw error;
         }
     },
