@@ -152,11 +152,13 @@ const addDefaultTokenToTemplate = (
 
 const buildTypographyCSSFromTemplate = (template: ITypographyCSSTemplate): string => {
     const baseCSS = getTypographyCSSString(template.base);
-    const breakpointsCSS = Object.keys(template.breakpoints).reduce((acc, breakpointKey) => {
-        const breakpoint = Number(breakpointKey);
-        const breakpointTypography = template.breakpoints[breakpoint];
-        return acc + `@media (max-width: ${breakpoint}px) { ${getTypographyCSSString(breakpointTypography)} }`;
-    }, '');
+    const breakpointsCSS = Object.keys(template.breakpoints)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .reduce((acc, breakpoint) => {
+            const breakpointTypography = template.breakpoints[breakpoint];
+            return acc + `@media (max-width: ${breakpoint}px) { ${getTypographyCSSString(breakpointTypography)} }`;
+        }, '');
 
     return baseCSS + breakpointsCSS;
 };
@@ -243,6 +245,7 @@ const addFluidTokenToTemplate = (
         return;
     }
 
+    const baseCSS = convertTypographyToCSSProperties(token.value.base, fontFamily);
     const desktopCSS = convertTypographyToCSSProperties(desktopEntry.typography, fontFamily);
     const mobileCSS = convertTypographyToCSSProperties(mobileEntry.typography, fontFamily);
     const maxVwRem = desktopEntry.width / 16;
@@ -252,7 +255,10 @@ const addFluidTokenToTemplate = (
         return;
     }
 
-    template.base[token.name] = desktopCSS;
+    template.base[token.name] = {
+        ...baseCSS,
+        ...desktopCSS,
+    };
 
     const fluidProperties = fluidPropertyKeys.reduce<Partial<ITypographyValue>>((acc, propertyKey) => {
         const desktopRaw = desktopCSS[propertyKey];
@@ -272,25 +278,7 @@ const addFluidTokenToTemplate = (
     }, {});
     addBreakpointTypography(template, desktopEntry.width, token.name, fluidProperties);
 
-    const hasFontSizeFallback = !Object.keys(fluidProperties).includes('font-size') && desktopCSS['font-size'] !== mobileCSS['font-size'];
-    const mobileOverrideProperties = Object.entries(mobileCSS)
-        .filter(([key, value]) => {
-            if (desktopCSS[key] === value) return false;
-
-            const isFluidKey = fluidPropertyKeys.includes(key as (typeof fluidPropertyKeys)[number]);
-            if (!isFluidKey) return true;
-            if (key === 'font-size' && hasFontSizeFallback) return true;
-
-            return !Object.keys(fluidProperties).includes(key);
-        })
-        .reduce<Partial<ITypographyValue>>(
-            (acc, [key, value]) => ({
-                ...acc,
-                [key]: value,
-            }),
-            {}
-        );
-    addBreakpointTypography(template, mobileEntry.width, token.name, mobileOverrideProperties);
+    addBreakpointTypography(template, mobileEntry.width, token.name, mobileCSS);
 };
 
 export const buildTypographyCSSContent = (
