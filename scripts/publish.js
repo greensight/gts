@@ -12,18 +12,18 @@ try {
 
     if (!versionMatch) {
         console.error(`❌ Invalid version format: ${currentVersion}`);
-        console.error('Expected format: X.Y.Z or X.Y.Z-alpha.N');
+        console.error('Expected format: X.Y.Z or X.Y.Z-<preid>.N (preid: alpha, beta, rc)');
         process.exit(1);
     }
 
     const [, major, minor, patch, preRelease, preReleaseNumber] = versionMatch;
 
     let newVersion;
-    if (preRelease === 'alpha') {
+    if (preRelease === 'beta') {
         const newPreReleaseNumber = parseInt(preReleaseNumber || '0', 10) + 1;
-        newVersion = `${major}.${minor}.${patch}-alpha.${newPreReleaseNumber}`;
+        newVersion = `${major}.${minor}.${patch}-beta.${newPreReleaseNumber}`;
     } else {
-        newVersion = `${major}.${minor}.${patch}-alpha.1`;
+        newVersion = `${major}.${minor}.${patch}-beta.1`;
     }
 
     packageJson.version = newVersion;
@@ -39,9 +39,9 @@ try {
         process.exit(1);
     }
 
-    console.log(`📤 Publishing ${newVersion} to npm with tag "alpha"...`);
+    console.log(`📤 Publishing ${newVersion} to npm with tag "beta"...`);
     try {
-        execSync(`cd dist && npm publish --access public --tag alpha`, { stdio: 'inherit' });
+        execSync(`cd dist && npm publish --access public --tag beta`, { stdio: 'inherit' });
         console.log(`✅ Successfully published ${newVersion}`);
     } catch (error) {
         console.error(`❌ Failed to publish ${newVersion}:`, error.message);

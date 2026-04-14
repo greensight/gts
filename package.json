@@ -1,7 +1,7 @@
 {
     "name": "@greensight/gts",
     "license": "MIT",
-    "version": "1.0.0-alpha.18",
+    "version": "1.0.0-beta.1",
     "description": "Generate design tokens from Figma",
     "type": "module",
     "private": false,
@@ -13,7 +13,7 @@
         "lint": "eslint . --ext .ts --fix",
         "repack": "rm -rf ./node_modules && pnpm store prune && pnpm i",
         "format": "prettier ./src --write --ignore-path .prettierignore",
-        "publish:alpha": "node scripts/publish.js"
+        "publish:beta": "node scripts/publish.js"
     },
     "repository": {
         "type": "git",
