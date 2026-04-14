@@ -129,12 +129,15 @@ export const deriveUtilityNamingFromVariablePath = (variablePath: string): IUtil
 };
 
 /**
- * Учитывает опциональные поля `input`: префикс переменных и класс обёртки.
+ * Учитывает опциональные поля `output`: префикс переменных и класс обёртки.
  */
-export const resolveUtilityNaming = (input: IUtilitiesInput): IUtilityNamingFromVariablePath => {
+export const resolveUtilityNaming = (
+    input: IUtilitiesInput,
+    output: IUtilitiesOutput
+): IUtilityNamingFromVariablePath => {
     const derived = deriveUtilityNamingFromVariablePath(input.variablePath);
-    const variableNamePrefix = input.variableNamePrefix ?? derived.variableNamePrefix;
-    const variablesClassName = input.variablesClassName ?? `${variableNamePrefix}-variables`;
+    const variableNamePrefix = output.parseVariableName?.(input.variablePath) ?? derived.variableNamePrefix;
+    const variablesClassName = output.variablesClassName ?? `${variableNamePrefix}-variables`;
 
     return {
         variableNamePrefix,
@@ -228,11 +231,15 @@ const buildUtilityVarTemplate = (
 /**
  * Глобальный styles.css: класс-обёртка с CSS variables и вложенные @media (max-width), без медиа при ≤1 режиме или пустых breakpoints.
  */
-export const buildUtilitiesGlobalStylesCSS = (tokens: IResolvedUtilityToken[], input: IUtilitiesInput): string => {
+export const buildUtilitiesGlobalStylesCSS = (
+    tokens: IResolvedUtilityToken[],
+    input: IUtilitiesInput,
+    output: IUtilitiesOutput
+): string => {
     if (!tokens.length) return '';
 
     const { breakpoints } = input;
-    const { variablesClassName, variableNamePrefix } = resolveUtilityNaming(input);
+    const { variablesClassName, variableNamePrefix } = resolveUtilityNaming(input, output);
     const template = buildUtilityVarTemplate(tokens, breakpoints, variableNamePrefix);
 
     const baseProps = Object.keys(template.base).map(key => `    ${key}: ${template.base[key]};`);
@@ -335,8 +342,8 @@ export { utilities };
 /**
  * Содержимое index.ts: данные токенов и хелперы имён переменных (как в `styles.css`).
  */
-export const buildUtilitiesIndexTSContent = (input: IUtilitiesInput): string => {
-    const { variableNamePrefix } = resolveUtilityNaming(input);
+export const buildUtilitiesIndexTSContent = (input: IUtilitiesInput, output: IUtilitiesOutput): string => {
+    const { variableNamePrefix } = resolveUtilityNaming(input, output);
     const prefixLiteral = JSON.stringify(variableNamePrefix);
 
     return [
@@ -398,9 +405,9 @@ export const generateUtilitiesFiles = async ({
     output: IUtilitiesOutput;
 }): Promise<void> => {
     const { dir } = output;
-    const globalCss = buildUtilitiesGlobalStylesCSS(tokens, input);
+    const globalCss = buildUtilitiesGlobalStylesCSS(tokens, input, output);
     const utilitiesTs = buildUtilitiesDataTSContent(tokens, input);
-    const indexTs = buildUtilitiesIndexTSContent(input);
+    const indexTs = buildUtilitiesIndexTSContent(input, output);
 
     await writeUtilitiesFiles({ dir, globalCss, utilitiesTs, indexTs });
 };

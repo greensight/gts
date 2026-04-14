@@ -31,17 +31,20 @@ export interface IUtilitiesInput {
      * Если не задан или пустой — попадают все dimension-листья под `variablePath`.
      */
     include?: (string | RegExp)[];
-    /** Префикс для `--prefix-flatName` и `var(...)`. Если не задан — последний сегмент пути. */
-    variableNamePrefix?: string;
-    /** Класс обёртки в глобальном `styles.css`. Если не задан — `${variableNamePrefix}-variables`. */
-    variablesClassName?: string;
 }
 
 /**
- * Выход: каталог артефактов (`styles.css`, `utilities.ts`, `index.ts`).
+ * Выход: каталог артефактов (`styles.css`, `utilities.ts`, `index.ts`) и опции имён CSS.
  */
 export interface IUtilitiesOutput {
     dir: string;
+    /**
+     * Из `input.variablePath` получает префикс для `--prefix-flatName` и `var(...)`.
+     * Если не задан — последний сегмент пути.
+     */
+    parseVariableName?: (variablePath: string) => string;
+    /** Класс обёртки в глобальном `styles.css`. Если не задан — `${prefix}-variables`, где prefix из `parseVariableName`/дефолта. */
+    variablesClassName?: string;
 }
 
 /**
