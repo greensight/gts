@@ -13,6 +13,7 @@ export type IFontFamilyMap = Record<string, string>;
 export interface ITypographyFromTokenManagerInput {
     breakpoints: IBreakpoints;
     fontFamily?: IFontFamilyMap;
+    fluid?: boolean;
 }
 
 export interface ITypographyFromTokenManagerOutput {
@@ -96,6 +97,7 @@ export const typographyFromTokenManager = ({ input, output: { dir } }: ITypograp
             console.log(`[typography/tokenManager] Generating typography from TokenManager...`);
 
             const { breakpoints, fontFamily } = input;
+            const isFluid = input.fluid ?? true;
 
             // Check if TokenManager has loaded tokens
             if (!tokenManagerClient.isLoaded()) {
@@ -133,6 +135,7 @@ export const typographyFromTokenManager = ({ input, output: { dir } }: ITypograp
                 dir,
                 breakpoints,
                 fontFamily: fontFamily || {},
+                fluid: isFluid,
             });
 
             console.log(`[typography/tokenManager] ✅ Successfully generated typography files`);

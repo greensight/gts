@@ -109,6 +109,71 @@ export const getTypographyCSSArray = (token: IResolveValue, breakpoints: IBreakp
     );
 };
 
+interface ITypographyCSSTemplate {
+    base: Record<string, Partial<ITypographyValue>>;
+    breakpoints: Record<number, Record<string, Partial<ITypographyValue>>>;
+}
+
+const createTypographyCSSTemplate = (): ITypographyCSSTemplate => ({
+    base: {},
+    breakpoints: {},
+});
+
+const addBreakpointTypography = (
+    template: ITypographyCSSTemplate,
+    breakpoint: number,
+    tokenName: string,
+    css: Partial<ITypographyValue>
+) => {
+    if (!Object.keys(css).length) return;
+    if (!template.breakpoints[breakpoint]) template.breakpoints[breakpoint] = {};
+    template.breakpoints[breakpoint][tokenName] = {
+        ...template.breakpoints[breakpoint][tokenName],
+        ...css,
+    };
+};
+
+const addDefaultTokenToTemplate = (
+    template: ITypographyCSSTemplate,
+    token: ITypographyToken,
+    breakpoints: IBreakpoints,
+    fontFamily: IFontFamilyMap
+) => {
+    const cssArray = getTypographyCSSArray(token.value, breakpoints, fontFamily);
+    cssArray.forEach(({ breakpoint, css }) => {
+        if (breakpoint === null) {
+            template.base[token.name] = css;
+            return;
+        }
+
+        addBreakpointTypography(template, breakpoint, token.name, css);
+    });
+};
+
+const buildTypographyCSSFromTemplate = (template: ITypographyCSSTemplate): string => {
+    const baseCSS = getTypographyCSSString(template.base);
+    const breakpointsCSS = Object.keys(template.breakpoints).reduce((acc, breakpointKey) => {
+        const breakpoint = Number(breakpointKey);
+        const breakpointTypography = template.breakpoints[breakpoint];
+        return acc + `@media (max-width: ${breakpoint}px) { ${getTypographyCSSString(breakpointTypography)} }`;
+    }, '');
+
+    return baseCSS + breakpointsCSS;
+};
+
+const buildDefaultTypographyCSSContent = (
+    typographyTokens: ITypographyToken[],
+    breakpoints: IBreakpoints,
+    fontFamily: IFontFamilyMap
+): string => {
+    const template = typographyTokens.reduce<ITypographyCSSTemplate>((acc, token) => {
+        addDefaultTokenToTemplate(acc, token, breakpoints, fontFamily);
+        return acc;
+    }, createTypographyCSSTemplate());
+
+    return buildTypographyCSSFromTemplate(template);
+};
+
 const getTypographyCSSString = (typogarphyData: Record<string, Partial<ITypographyValue>>) =>
     Object.keys(typogarphyData).reduce((acc, key) => {
         const typographyValue = typogarphyData[key];
@@ -118,36 +183,130 @@ const getTypographyCSSString = (typogarphyData: Record<string, Partial<ITypograp
         return acc + `.typo-${key} { ${cssContent} }`;
     }, '');
 
+const parseNumber = (value: string | number): number | null => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseToRem = (value: string | number): number | null => {
+    if (typeof value === 'number') return value / 16;
+
+    const normalized = value.trim().toLowerCase();
+    if (normalized.endsWith('rem')) return parseNumber(normalized);
+    if (normalized.endsWith('px')) {
+        const px = parseNumber(normalized);
+        return px === null ? null : px / 16;
+    }
+
+    return null;
+};
+
+const buildFluidPropertyValue = (params: {
+    minValueRem: number;
+    maxValueRem: number;
+    minVwRem: number;
+    maxVwRem: number;
+}): string => {
+    const { minValueRem, maxValueRem, minVwRem, maxVwRem } = params;
+    const valueDiff = maxValueRem - minValueRem;
+
+    return `calc(${minValueRem}rem + ((100vw - ${minVwRem}rem) / (${maxVwRem}rem - ${minVwRem}rem)) * ${valueDiff}rem)`;
+};
+
+const addFluidTokenToTemplate = (
+    template: ITypographyCSSTemplate,
+    token: ITypographyToken,
+    breakpoints: IBreakpoints,
+    fontFamily: IFontFamilyMap
+): void => {
+    const fluidPropertyKeys = ['font-size', 'line-height'] as const;
+    const breakpointEntries = Object.entries(token.value.breakpoints)
+        .map(([breakpointName, typography]) => {
+            const width = Number.parseInt(breakpoints[breakpointName], 10);
+            return { breakpointName, width, typography };
+        })
+        .filter(entry => Number.isFinite(entry.width))
+        .sort((a, b) => b.width - a.width);
+
+    if (breakpointEntries.length < 2) {
+        addDefaultTokenToTemplate(template, token, breakpoints, fontFamily);
+        return;
+    }
+
+    const desktopEntry = breakpointEntries[0];
+    const mobileEntry = breakpointEntries[breakpointEntries.length - 1];
+
+    if (desktopEntry.width <= mobileEntry.width) {
+        addDefaultTokenToTemplate(template, token, breakpoints, fontFamily);
+        return;
+    }
+
+    const desktopCSS = convertTypographyToCSSProperties(desktopEntry.typography, fontFamily);
+    const mobileCSS = convertTypographyToCSSProperties(mobileEntry.typography, fontFamily);
+    const maxVwRem = desktopEntry.width / 16;
+    const minVwRem = mobileEntry.width / 16;
+    if (maxVwRem === minVwRem) {
+        addDefaultTokenToTemplate(template, token, breakpoints, fontFamily);
+        return;
+    }
+
+    template.base[token.name] = desktopCSS;
+
+    const fluidProperties = fluidPropertyKeys.reduce<Partial<ITypographyValue>>((acc, propertyKey) => {
+        const desktopRaw = desktopCSS[propertyKey];
+        const mobileRaw = mobileCSS[propertyKey];
+        if (desktopRaw === undefined || mobileRaw === undefined || desktopRaw === mobileRaw) {
+            return acc;
+        }
+
+        const maxValueRem = parseToRem(desktopRaw);
+        const minValueRem = parseToRem(mobileRaw);
+        if (maxValueRem === null || minValueRem === null) return acc;
+
+        return {
+            ...acc,
+            [propertyKey]: buildFluidPropertyValue({ minValueRem, maxValueRem, minVwRem, maxVwRem }),
+        };
+    }, {});
+    addBreakpointTypography(template, desktopEntry.width, token.name, fluidProperties);
+
+    const hasFontSizeFallback = !Object.keys(fluidProperties).includes('font-size') && desktopCSS['font-size'] !== mobileCSS['font-size'];
+    const mobileOverrideProperties = Object.entries(mobileCSS)
+        .filter(([key, value]) => {
+            if (desktopCSS[key] === value) return false;
+
+            const isFluidKey = fluidPropertyKeys.includes(key as (typeof fluidPropertyKeys)[number]);
+            if (!isFluidKey) return true;
+            if (key === 'font-size' && hasFontSizeFallback) return true;
+
+            return !Object.keys(fluidProperties).includes(key);
+        })
+        .reduce<Partial<ITypographyValue>>(
+            (acc, [key, value]) => ({
+                ...acc,
+                [key]: value,
+            }),
+            {}
+        );
+    addBreakpointTypography(template, mobileEntry.width, token.name, mobileOverrideProperties);
+};
+
 export const buildTypographyCSSContent = (
     typographyTokens: ITypographyToken[],
     breakpoints: IBreakpoints,
-    fontFamily: IFontFamilyMap
+    fontFamily: IFontFamilyMap,
+    fluid: boolean
 ): string => {
-    const template = typographyTokens.reduce<{
-        base: Record<string, Partial<ITypographyValue>>;
-        breakpoints: Record<string, Record<string, Partial<ITypographyValue>>>;
-    }>(
-        (acc, token) => {
-            const cssArray = getTypographyCSSArray(token.value, breakpoints, fontFamily);
-            cssArray.forEach(({ breakpoint, css }) => {
-                if (!breakpoint) acc.base[token.name] = css;
-                else {
-                    if (!acc.breakpoints[breakpoint]) acc.breakpoints[breakpoint] = {};
-                    acc.breakpoints[breakpoint][token.name] = css;
-                }
-            });
-            return acc;
-        },
-        { base: {}, breakpoints: {} }
-    );
-    const baseCSS = getTypographyCSSString(template.base);
+    if (!fluid) return buildDefaultTypographyCSSContent(typographyTokens, breakpoints, fontFamily);
 
-    const breakpointsCSS = Object.keys(template.breakpoints).reduce((acc, breakpoint) => {
-        const breakpointTypography = template.breakpoints[breakpoint];
-        return acc + `@media (max-width: ${breakpoint}px) { ${getTypographyCSSString(breakpointTypography)} }`;
-    }, '');
+    const template = typographyTokens.reduce<ITypographyCSSTemplate>((acc, token) => {
+        addFluidTokenToTemplate(acc, token, breakpoints, fontFamily);
+        return acc;
+    }, createTypographyCSSTemplate());
 
-    return baseCSS + breakpointsCSS;
+    return buildTypographyCSSFromTemplate(template);
 };
 
 export const buildTSTypographyContent = (typographyTokens: ITypographyToken[]): string => {
@@ -225,6 +384,7 @@ interface IGenerateTypographyFilesParams {
     dir: string;
     breakpoints: IBreakpoints;
     fontFamily: IFontFamilyMap;
+    fluid: boolean;
 }
 
 export const generateTypographyFiles = async ({
@@ -232,8 +392,9 @@ export const generateTypographyFiles = async ({
     dir,
     breakpoints,
     fontFamily,
+    fluid,
 }: IGenerateTypographyFilesParams) => {
-    const cssContent = buildTypographyCSSContent(typographyTokens, breakpoints, fontFamily);
+    const cssContent = buildTypographyCSSContent(typographyTokens, breakpoints, fontFamily, fluid);
     const typographyTSContent = buildTSTypographyDataContent(typographyTokens, fontFamily);
     const indexTSContent = buildTSTypographyContent(typographyTokens);
 
