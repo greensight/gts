@@ -39,9 +39,9 @@ try {
         process.exit(1);
     }
 
-    console.log(`📤 Publishing ${newVersion} to npm with tag "beta"...`);
+    console.log(`📤 Publishing ${newVersion} to npm with tag "latest"...`);
     try {
-        execSync(`cd dist && npm publish --access public --tag beta`, { stdio: 'inherit' });
+        execSync(`cd dist && npm publish --access public --tag latest`, { stdio: 'inherit' });
         console.log(`✅ Successfully published ${newVersion}`);
     } catch (error) {
         console.error(`❌ Failed to publish ${newVersion}:`, error.message);

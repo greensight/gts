@@ -34,7 +34,7 @@ export class FigmaAPI {
         { params = {}, timeout = 30000, abortController = new AbortController() }: IConfig = {}
     ) {
         if (!this.figmaToken || !this.fileId) {
-            throw new Error('Добавьте figmaToken и figmaId');
+            throw new Error('figmaToken and fileId are required in gts.config.ts');
         }
 
         const parsedParams = Object.entries(params).reduce((acc, [key, value]) => {

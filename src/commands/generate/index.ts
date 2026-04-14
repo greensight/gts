@@ -7,7 +7,9 @@ export const generate = async () => {
     const config = new Config();
     const configData = await config.load();
     if (!configData) {
-        throw new Error('Заполнить ошибку через нейронку');
+        throw new Error(
+            'Failed to load gts.config.ts. Run "npx gts-init" to create it, or ensure the file exists and default-exports a valid configuration.'
+        );
     }
 
     const { figmaToken, fileId, modules, manifest } = configData;

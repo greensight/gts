@@ -28,7 +28,9 @@ export class Config {
                 `${path.resolve(process.cwd(), Config.configFileName)}`
             );
 
-            if (!exportedContent) throw new Error();
+            if (!exportedContent) {
+                throw new Error('gts.config.ts must default-export a configuration object');
+            }
             return exportedContent.default;
         } catch (error) {
             console.error('Cannot find module gts.config.ts', error);
