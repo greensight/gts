@@ -136,7 +136,7 @@ export const resolveUtilityNaming = (
     output: IUtilitiesOutput
 ): IUtilityNamingFromVariablePath => {
     const derived = deriveUtilityNamingFromVariablePath(input.variablePath);
-    const variableNamePrefix = output.parseVariableName?.(input.variablePath) ?? derived.variableNamePrefix;
+    const variableNamePrefix = derived.variableNamePrefix;
     const variablesClassName = output.variablesClassName ?? `${variableNamePrefix}-variables`;
 
     return {
@@ -146,10 +146,41 @@ export const resolveUtilityNaming = (
 };
 
 /**
+ * Полное имя CSS custom property без `--`.
+ */
+export const getUtilityCssVariableNameWithoutDashes = (
+    variablePath: string,
+    flatName: string
+): string => `${deriveUtilityNamingFromVariablePath(variablePath).variableNamePrefix}-${flatName}`;
+
+/**
  * Имя CSS custom property для токена (как в сгенерированном `styles.css`).
  */
-export const getUtilityCssVariableName = (variableNamePrefix: string, flatName: string): string =>
-    variableNamePrefix ? `--${variableNamePrefix}-${flatName}` : `--${flatName}`;
+export const getUtilityCssVariableName = (
+    variablePath: string,
+    flatName: string
+): string => `--${getUtilityCssVariableNameWithoutDashes(variablePath, flatName)}`;
+
+const withCssVariableDashes = (nameWithoutDashes: string): string => `--${nameWithoutDashes}`;
+
+export const resolveUtilityCssVariableNameWithoutDashes = (
+    input: IUtilitiesInput,
+    output: IUtilitiesOutput,
+    flatName: string
+): string => {
+    const defaultName = getUtilityCssVariableNameWithoutDashes(input.variablePath, flatName);
+    if (!output.parseCssVariableName) {
+        return defaultName;
+    }
+
+    const parsedName = output.parseCssVariableName({
+        variablePath: input.variablePath,
+        flatName,
+        defaultName,
+    });
+
+    return parsedName.trim() ? parsedName : defaultName;
+};
 
 const mergeBreakpointMaps = (
     a: Record<number, Record<string, string>>,
@@ -168,10 +199,12 @@ const mergeBreakpointMaps = (
  */
 export const splitUtilityTokenForMedia = (
     token: IResolvedUtilityToken,
-    breakpoints: IBreakpoints,
-    variableNamePrefix: string
+    input: IUtilitiesInput,
+    output: IUtilitiesOutput
 ): { base: Record<string, string>; byBreakpoint: Record<number, Record<string, string>> } => {
-    const varKey = getUtilityCssVariableName(variableNamePrefix, token.flatName);
+    const { breakpoints } = input;
+    const nameWithoutDashes = resolveUtilityCssVariableNameWithoutDashes(input, output, token.flatName);
+    const varKey = withCssVariableDashes(nameWithoutDashes);
     const sortedModes = getSortedBreakpointModes(breakpoints);
 
     if (Object.keys(breakpoints).length === 0 || sortedModes.length === 0) {
@@ -214,12 +247,12 @@ interface IUtilityVarTemplate {
 
 const buildUtilityVarTemplate = (
     tokens: IResolvedUtilityToken[],
-    breakpoints: IBreakpoints,
-    variableNamePrefix: string
+    input: IUtilitiesInput,
+    output: IUtilitiesOutput
 ): IUtilityVarTemplate =>
     tokens.reduce<IUtilityVarTemplate>(
         (acc, token) => {
-            const { base, byBreakpoint } = splitUtilityTokenForMedia(token, breakpoints, variableNamePrefix);
+            const { base, byBreakpoint } = splitUtilityTokenForMedia(token, input, output);
             return {
                 base: { ...acc.base, ...base },
                 breakpoints: mergeBreakpointMaps(acc.breakpoints, byBreakpoint),
@@ -238,9 +271,8 @@ export const buildUtilitiesGlobalStylesCSS = (
 ): string => {
     if (!tokens.length) return '';
 
-    const { breakpoints } = input;
-    const { variablesClassName, variableNamePrefix } = resolveUtilityNaming(input, output);
-    const template = buildUtilityVarTemplate(tokens, breakpoints, variableNamePrefix);
+    const { variablesClassName } = resolveUtilityNaming(input, output);
+    const template = buildUtilityVarTemplate(tokens, input, output);
 
     const baseProps = Object.keys(template.base).map(key => `    ${key}: ${template.base[key]};`);
     const baseBlock = formatCSSBlock(`.${variablesClassName}`, baseProps);
@@ -260,137 +292,120 @@ export const buildUtilitiesGlobalStylesCSS = (
     return mediaBlocks ? `${baseBlock}\n\n${mediaBlocks}` : baseBlock;
 };
 
-export interface IUtilitySerializableEntry {
-    breakpoints: Record<string, string>;
-}
-
-/**
- * Данные для utilities.ts: все значения по режимам токена в `breakpoints` (без схлопывания совпадающих соседей).
- * Порядок ключей: режимы из `getSortedBreakpointModes` (широкий → узкий), присутствующие в токене;
- * затем остальные режимы в порядке `Object.keys(resolvedByMode)`.
- * Если конфиг `breakpoints` пуст или нет валидных ширин — порядок ключей как в `Object.keys(resolvedByMode)`.
- */
-export const utilityTokenToSerializableData = (
-    token: IResolvedUtilityToken,
-    breakpoints: IBreakpoints
-): IUtilitySerializableEntry => {
-    const resolved = token.resolvedByMode;
-    const sortedModes = getSortedBreakpointModes(breakpoints);
-    const hasValidBreakpointWidths = Object.keys(breakpoints).length > 0 && sortedModes.length > 0;
-
-    const modesOrder = (() => {
-        if (!hasValidBreakpointWidths) {
-            return Object.keys(resolved);
-        }
-
-        const ordered: string[] = [];
-        const seen = new Set<string>();
-
-        sortedModes.forEach(({ mode }) => {
-            if (!(mode in resolved)) return;
-            ordered.push(mode);
-            seen.add(mode);
-        });
-
-        Object.keys(resolved).forEach(mode => {
-            if (seen.has(mode)) return;
-            ordered.push(mode);
-            seen.add(mode);
-        });
-
-        return ordered;
-    })();
-
-    const breakpointsRecord = modesOrder.reduce<Record<string, string>>((acc, mode) => {
-        const resolvedValue = resolved[mode];
-        if (resolvedValue === undefined) {
-            return acc;
-        }
-        return { ...acc, [mode]: resolvedValue };
-    }, {});
-
-    return { breakpoints: breakpointsRecord };
+const getDefaultUtilityKey = (flatName: string): string => {
+    const segments = flatName
+        .split('-')
+        .map(segment => segment.trim())
+        .filter(Boolean);
+    return segments[segments.length - 1] ?? flatName;
 };
 
-/**
- * Содержимое файла utilities.ts (объект + as const).
- */
-export const buildUtilitiesDataTSContent = (tokens: IResolvedUtilityToken[], input: IUtilitiesInput): string => {
-    const { breakpoints } = input;
-
-    if (!tokens.length) {
-        return `const utilities = {} as const;
-
-export { utilities };
-`;
+const resolveUtilityKey = (input: IUtilitiesInput, output: IUtilitiesOutput, flatName: string): string => {
+    const defaultKey = getDefaultUtilityKey(flatName);
+    if (!output.parseUtilityKey) {
+        return defaultKey;
     }
 
-    const entries = tokens.map(token => {
-        const data = utilityTokenToSerializableData(token, breakpoints);
-        const json = JSON.stringify(data, null, 8);
-        return `    '${token.flatName}': ${json.replace(/\n/g, '\n    ')}`;
+    const parsedKey = output.parseUtilityKey({
+        variablePath: input.variablePath,
+        flatName,
+        defaultKey,
     });
 
-    return `const utilities = {
-${entries.join(',\n')}
-} as const;
-
-export { utilities };
-`;
+    return parsedKey.trim() ? parsedKey : defaultKey;
 };
+
+const tsIdentifierPattern = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+const resolveUtilityKeysTypeName = (output: IUtilitiesOutput): string => {
+    const rawName = output.utilityKeysTypeName?.trim();
+    const typeName = rawName || 'UtilitiesKeysType';
+    if (!tsIdentifierPattern.test(typeName)) {
+        throw new Error(
+            `Invalid utilityKeysTypeName: "${typeName}". Expected a valid TypeScript identifier.`
+        );
+    }
+
+    return typeName;
+};
+
+const buildUtilityVariableNameMap = (
+    tokens: IResolvedUtilityToken[],
+    input: IUtilitiesInput,
+    output: IUtilitiesOutput
+): Record<string, string> =>
+    tokens.reduce<Record<string, string>>((acc, token) => {
+        const key = resolveUtilityKey(input, output, token.flatName);
+        const existingFlatName = acc[key];
+        if (existingFlatName && existingFlatName !== token.flatName) {
+            throw new Error(
+                `Utility key collision: "${key}" is generated for both "${existingFlatName}" and "${token.flatName}"`
+            );
+        }
+
+        return {
+            ...acc,
+            [key]: token.flatName,
+        };
+    }, {});
 
 /**
  * Содержимое index.ts: данные токенов и хелперы имён переменных (как в `styles.css`).
  */
-export const buildUtilitiesIndexTSContent = (input: IUtilitiesInput, output: IUtilitiesOutput): string => {
-    const { variableNamePrefix } = resolveUtilityNaming(input, output);
-    const prefixLiteral = JSON.stringify(variableNamePrefix);
+export const buildUtilitiesIndexTSContent = (
+    tokens: IResolvedUtilityToken[],
+    input: IUtilitiesInput,
+    output: IUtilitiesOutput
+): string => {
+    const flatNameByKey = buildUtilityVariableNameMap(tokens, input, output);
+    const variableNameByKey = Object.keys(flatNameByKey).reduce<Record<string, string>>((acc, key) => {
+        const flatName = flatNameByKey[key];
+        return {
+            ...acc,
+            [key]: resolveUtilityCssVariableNameWithoutDashes(input, output, flatName),
+        };
+    }, {});
+    const variableNameByKeyLiteral = JSON.stringify(variableNameByKey, null, 4);
+    const rawHelperName = output.getUtilityCssVarFunctionName?.trim();
+    const utilityCssVarFunctionName = rawHelperName || 'getUtilityCssVar';
+    const utilityKeysTypeName = resolveUtilityKeysTypeName(output);
 
     return [
-        `import { utilities } from './utilities';`,
+        `const utilityVariableNameByKey = ${variableNameByKeyLiteral} as const;`,
         ``,
-        `type UtilitiesKeysType = keyof typeof utilities;`,
+        `type ${utilityKeysTypeName} = keyof typeof utilityVariableNameByKey;`,
         ``,
-        `const utilityVariableNamePrefix = ${prefixLiteral};`,
+        `const getUtilityCssVariableName = (key: ${utilityKeysTypeName}): string =>`,
+        `    \`--\${utilityVariableNameByKey[key]}\`;`,
         ``,
-        `const getUtilityCssVariableName = (key: UtilitiesKeysType): string =>`,
-        `    utilityVariableNamePrefix`,
-        `        ? \`--\${utilityVariableNamePrefix}-\${String(key)}\``,
-        `        : \`--\${String(key)}\`;`,
-        ``,
-        `const getUtilityCssVar = (key: UtilitiesKeysType): string =>`,
+        `const ${utilityCssVarFunctionName} = (key: ${utilityKeysTypeName}): string =>`,
         `    \`var(\${getUtilityCssVariableName(key)})\`;`,
         ``,
         `export {`,
-        `    utilities,`,
         `    getUtilityCssVariableName,`,
-        `    getUtilityCssVar,`,
-        `    type UtilitiesKeysType,`,
+        `    ${utilityCssVarFunctionName},`,
+        `    type ${utilityKeysTypeName},`,
         `};`,
         ``,
     ].join('\n');
 };
 
 const globalStylesFileName = 'styles.css';
-const utilitiesDataFileName = 'utilities.ts';
 const moduleFileName = 'index.ts';
 
 export const writeUtilitiesFiles = async ({
     dir,
     globalCss,
-    utilitiesTs,
     indexTs,
 }: {
     dir: string;
     globalCss: string;
-    utilitiesTs: string;
     indexTs: string;
 }): Promise<void> => {
     await FileStorage.delete(dir);
 
     await Promise.all([
         FileStorage.write(globalStylesFileName, globalCss, { directory: dir }),
-        FileStorage.write(utilitiesDataFileName, utilitiesTs, { directory: dir }),
         FileStorage.write(moduleFileName, indexTs, { directory: dir }),
     ]);
 };
@@ -406,8 +421,7 @@ export const generateUtilitiesFiles = async ({
 }): Promise<void> => {
     const { dir } = output;
     const globalCss = buildUtilitiesGlobalStylesCSS(tokens, input, output);
-    const utilitiesTs = buildUtilitiesDataTSContent(tokens, input);
-    const indexTs = buildUtilitiesIndexTSContent(input, output);
+    const indexTs = buildUtilitiesIndexTSContent(tokens, input, output);
 
-    await writeUtilitiesFiles({ dir, globalCss, utilitiesTs, indexTs });
+    await writeUtilitiesFiles({ dir, globalCss, indexTs });
 };

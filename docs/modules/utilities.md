@@ -19,11 +19,14 @@
 
 ## `output`
 
-| Поле                 | Тип                                             | Обязательность  | По умолчанию                     | Описание                                                                                                                                                                                                                                        |
-| -------------------- | ----------------------------------------------- | --------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dir`                | `string`                                        | **Обязательно** | —                                | Каталог для `styles.css`, `utilities.ts`, `index.ts` и связанных артефактов модуля.                                                                                                                                                             |
-| `parseVariableName`  | `(variablePath: string) => string \| undefined` | Опционально     | последний сегмент `variablePath` | Возвращает префикс для CSS-переменных `--prefix-flatName` и сгенерированных хелперов `getUtilityCssVariableName` в `index.ts`. Позволяет задать имя от полного пути (например несколько сегментов через `.`), а не только фиксированную строку. |
-| `variablesClassName` | `string \| undefined`                           | Опционально     | `` `${prefix}-variables` ``      | Имя класса-обёртки в глобальном `styles.css`, где `prefix` — результат `parseVariableName` или дефолт выше.                                                                                                                                     |
+| Поле                   | Тип                                                                                                  | Обязательность  | По умолчанию                                   | Описание                                                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dir`                  | `string`                                                                                             | **Обязательно** | —                                              | Каталог для `styles.css`, `index.ts` и связанных артефактов модуля.                                                                               |
+| `variablesClassName`   | `string \| undefined`                                                                                | Опционально     | `` `${lastSegment(variablePath)}-variables` `` | Имя класса-обёртки в глобальном `styles.css`.                                                                                                     |
+| `parseCssVariableName` | `((params: { variablePath: string; flatName: string; defaultName: string }) => string) \| undefined` | Опционально     | —                                              | Кастомный парсер нейминга CSS custom property. Должен возвращать имя **без** `--`. Используется для генерации ключей в `styles.css` и `index.ts`. |
+| `parseUtilityKey`      | `((params: { variablePath: string; flatName: string; defaultKey: string }) => string) \| undefined`  | Опционально     | —                                              | Кастомный парсер короткого ключа utility для `UtilitiesKeysType` в `index.ts`. Если возвращает пустую строку — используется `defaultKey`.        |
+| `getUtilityCssVarFunctionName` | `string \| undefined`                                                                         | Опционально     | `getUtilityCssVar`                             | Имя экспортируемой функции-хелпера, которая возвращает `var(--...)` для utility-ключа.                                                            |
+| `utilityKeysTypeName`  | `string \| undefined`                                                                                | Опционально     | `UtilitiesKeysType`                            | Имя экспортируемого типа ключей utilities в сгенерированном `index.ts`. Должно быть валидным TypeScript-идентификатором.                         |
 
 ## Пример
 
@@ -36,17 +39,27 @@ utilitiesFromTokenManager({
     },
     output: {
         dir: './dist/utilities',
-        parseVariableName: path => path.split('.').pop() ?? path,
         variablesClassName: 'spacing-variables',
+        utilityKeysTypeName: 'SpacingUtilityKey',
+        getUtilityCssVarFunctionName: 'utilityVar',
+        parseCssVariableName: ({ variablePath, flatName, defaultName }) => {
+            const variablePathPrefix = variablePath
+                .split('.')
+                .map(segment => segment.trim())
+                .filter(Boolean)
+                .join('-');
+
+            if (!variablePathPrefix) {
+                return defaultName;
+            }
+
+            return `${variablePathPrefix}-${flatName}`;
+        },
+        parseUtilityKey: ({ flatName, defaultKey }) => {
+            const segments = flatName.split('-').filter(Boolean);
+            const shortKey = segments[segments.length - 1];
+            return shortKey ?? defaultKey;
+        },
     },
 });
-```
-
-Фиксированный префикс для имён переменных и класса обёртки:
-
-```typescript
-output: {
-    dir: './dist/utilities',
-    parseVariableName: () => 'spacing',
-}
 ```

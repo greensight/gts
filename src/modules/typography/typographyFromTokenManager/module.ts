@@ -43,8 +43,9 @@ const resolveTypographyTokens = (
         const obj = tokens[key];
         if (typeof obj !== 'object' || Array.isArray(obj)) return acc;
 
-        if (!('type' in obj) || !('value' in obj))
+        if (!('type' in obj) || !('value' in obj)) {
             return { ...acc, [key]: resolveTypographyTokens(obj, tokenManagerClient, options) };
+        }
 
         if (obj.type !== 'typography') return acc;
         const value = obj.value as ITypographyValue;

@@ -34,17 +34,41 @@ export interface IUtilitiesInput {
 }
 
 /**
- * Выход: каталог артефактов (`styles.css`, `utilities.ts`, `index.ts`) и опции имён CSS.
+ * Выход: каталог артефактов (`styles.css`, `index.ts`) и опции имён CSS.
  */
 export interface IUtilitiesOutput {
     dir: string;
-    /**
-     * Из `input.variablePath` получает префикс для `--prefix-flatName` и `var(...)`.
-     * Если не задан — последний сегмент пути.
-     */
-    parseVariableName?: (variablePath: string) => string;
-    /** Класс обёртки в глобальном `styles.css`. Если не задан — `${prefix}-variables`, где prefix из `parseVariableName`/дефолта. */
+    /** Класс обёртки в глобальном `styles.css`. Если не задан — `${lastSegment(variablePath)}-variables`. */
     variablesClassName?: string;
+    /**
+     * Кастомный парсер полного имени CSS custom property без `--`.
+     * Позволяет переопределить нейминг переменных в `styles.css` и `index.ts`.
+     * Если не задан — используется дефолтная стратегия `${lastSegment(variablePath)}-${flatName}`.
+     */
+    parseCssVariableName?: (params: {
+        variablePath: string;
+        flatName: string;
+        defaultName: string;
+    }) => string;
+    /**
+     * Кастомный парсер короткого utility-ключа для публичного API.
+     * Если не задан — используется дефолтный ключ (последний сегмент `flatName` после `-`).
+     */
+    parseUtilityKey?: (params: {
+        variablePath: string;
+        flatName: string;
+        defaultKey: string;
+    }) => string;
+    /**
+     * Имя экспортируемой функции, которая возвращает `var(--...)` по utility-ключу.
+     * Если не задано — `getUtilityCssVar`.
+     */
+    getUtilityCssVarFunctionName?: string;
+    /**
+     * Имя экспортируемого типа ключей utilities в сгенерированном `index.ts`.
+     * Если не задано — `UtilitiesKeysType`.
+     */
+    utilityKeysTypeName?: string;
 }
 
 /**

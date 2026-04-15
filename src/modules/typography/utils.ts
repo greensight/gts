@@ -73,8 +73,8 @@ export const convertTypographyToCSSProperties = (
 
     Object.entries(typography).forEach(([key, value]) => {
         const resolvedValue = key === 'fontFamily' ? resolveFontFamilyValue(value, fontFamily) : value;
-        // Преобразуем camelCase в kebab-case
-        const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        // Преобразуем camelCase в kebab-case без принудительного lower-case
+        const cssKey = key.replace(/([A-Z])/g, '-$1');
         cssProperties[cssKey] = resolvedValue;
     });
 
