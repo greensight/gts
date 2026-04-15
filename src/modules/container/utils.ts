@@ -24,8 +24,8 @@ export const buildContainerCSS = (containerTokens: IContainerToken[], layer?: st
 export const buildContainerIndex = (): string =>
     `import styles from './styles.module.css';
 
-export const conatinerClassName = styles.container;
-export const conatinerTabletClassName = styles.containerTablet;
+export const containerClassName = styles.container;
+export const containerTabletClassName = styles.containerTablet;
 `;
 
 export const deleteAndWriteFile = async (fileName: string, content: string, directory: string) => {
