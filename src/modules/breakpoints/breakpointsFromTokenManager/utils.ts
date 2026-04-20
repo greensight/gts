@@ -14,12 +14,13 @@ const buildCSSContent = (breakpointTokens: IBreakpointToken[]): string => {
 const buildSCSSContent = (breakpointTokens: IBreakpointToken[]): string => {
     const entries = breakpointTokens.map(({ name, value }) => `    ${name}: ${value}`);
     const defaultBreakpoint = breakpointTokens.at(-1)?.name;
+    const sassScalars = breakpointTokens.map(({ name, value }) => `$${name}: ${value};`).join('\n');
 
     if (!entries.length || !defaultBreakpoint) {
         return '';
     }
 
-    return `$breakpointList: (\n${entries.join(',\n')}\n);\n\n$defaultBreakpoint: '${defaultBreakpoint}';\n`;
+    return `$breakpointList: (\n${entries.join(',\n')}\n);\n\n$defaultBreakpoint: '${defaultBreakpoint}';\n\n${sassScalars}\n`;
 };
 
 const buildIndexContent = (breakpoints: Record<string, number>): string => {
